@@ -31,9 +31,9 @@ AGENT_NAMES = [
 ]
 
 
-def explain_signal_card(card: SignalCard, validation: dict | None = None) -> SignalExplanationReport:
+def explain_signal_card(card: SignalCard, validation: dict | None = None, database_url: str | None = None) -> SignalExplanationReport:
     ml_score = score_signal_card(card)
-    validation = validation if validation is not None else validation_summary()
+    validation = validation if validation is not None else validation_summary(database_url=database_url)
     return Synthesizer().run(
         card=card,
         bull_case=BullAgent().run(card),
@@ -47,11 +47,11 @@ def explain_signal_card(card: SignalCard, validation: dict | None = None) -> Sig
     )
 
 
-def explain_ticker(ticker: str) -> SignalExplanationReport | None:
-    card = get_signal_card_for_ticker(ticker)
+def explain_ticker(ticker: str, database_url: str | None = None) -> SignalExplanationReport | None:
+    card = get_signal_card_for_ticker(ticker, database_url=database_url)
     if card is None:
         return None
-    return explain_signal_card(card)
+    return explain_signal_card(card, database_url=database_url)
 
 
 def agents_health() -> dict:

@@ -116,14 +116,35 @@ python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-
 python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31
 ```
 
-The generator creates deterministic synthetic Reddit-like events, SEC-like filings, and market bars across multiple tickers and scenarios. It labels sources as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for testing Granger-style validation, lead-lag checks, ML target classes, and replay behavior, but they are not real market evidence.
+The generator creates deterministic synthetic Reddit-like events, SEC-like filings, and market bars across multiple tickers and scenarios. It labels sources as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for testing Granger-style validation, lead-lag checks, ML target classes, dashboard empty states, and replay behavior, but they are not real market evidence.
 
 Replay mode reads synthetic events in ingestion-time order and rebuilds available Signal Cards over time without looking ahead. Use the Streamlit `Demo Data / Replay` page or `GET /simulation/status` to inspect synthetic row counts.
 
-Full demo pipeline:
+## Full Demo Pipeline
+
+Use this single offline command for demo readiness. It does not require real Reddit credentials, live SEC access, paid APIs, or external LLM calls:
+
+```bash
+python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA
+```
+
+The pipeline runs the full local sequence:
+
+1. Reset and generate deterministic synthetic history.
+2. Replay synthetic Reddit-like events in ingestion-time order.
+3. Generate Signal Cards.
+4. Run the educational backtester.
+5. Run research validation diagnostics.
+6. Train/evaluate lightweight ML scoring models.
+7. Generate a deterministic evidence-grounded explanation for the sample ticker.
+
+All generated rows are labeled synthetic/demo (`synthetic_reddit`, `synthetic_sec`, and `synthetic_market`) and outputs explicitly warn that synthetic results are not real market evidence, investment advice, or proof of causality. To append instead of resetting demo rows, pass `--no-reset-demo-data`. To inspect individual stages manually, run:
 
 ```bash
 python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
+python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31
+python3 -m backend.models.signal_engine
+python3 -m backend.models.backtester
 python3 -m backend.research.validation
 python3 -m backend.ml.training
 python3 -m backend.agents.explanation_engine --ticker NVDA
