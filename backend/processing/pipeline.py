@@ -218,6 +218,11 @@ def signal_card_from_aggregate(aggregate: TickerAggregate) -> SignalCard:
         contradiction_score=contradiction_score,
         catalyst_score=0.0,
         data_quality_score=data_quality_score,
+        sentiment_score=aggregate.average_sentiment_score,
+        bullish_ratio=aggregate.bullish_ratio,
+        bearish_ratio=aggregate.bearish_ratio,
+        mention_count=aggregate.mention_count,
+        source_event_count=aggregate.source_event_count,
         sentiment_label=sentiment_label,
         market_stance=market_stance,
         intent=aggregate.top_intents[0] if aggregate.top_intents else "unknown",
@@ -238,9 +243,19 @@ def signal_card_from_aggregate(aggregate: TickerAggregate) -> SignalCard:
 
 
 def generate_signal_cards_from_events(events: list[Event]) -> list[SignalCard]:
-    aggregates = aggregate_processed_events(process_events(events))
+    synthetic_events = [event for event in events if event.source == "synthetic_reddit"]
+    non_synthetic_events = [event for event in events if event.source != "synthetic_reddit"]
+    cards: list[SignalCard] = []
+    for event in synthetic_events:
+        for aggregate in aggregate_processed_events(process_events([event])):
+            card = signal_card_from_aggregate(aggregate)
+            updated = card.model_dump()
+            updated["explanation"] = "Synthetic demonstration data. " + card.explanation
+            cards.append(SignalCard(**updated))
+    aggregates = aggregate_processed_events(process_events(non_synthetic_events))
+    cards.extend(signal_card_from_aggregate(aggregate) for aggregate in aggregates)
     return sorted(
-        [signal_card_from_aggregate(aggregate) for aggregate in aggregates],
+        cards,
         key=lambda card: card.signal_strength,
         reverse=True,
     )

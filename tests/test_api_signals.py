@@ -21,6 +21,7 @@ from backend.api.routes import (
     signal_for_ticker,
     signal_explanation_history,
     signal_ml_score,
+    simulation_status,
 )
 from backend.database.db import connect, initialize, insert_events, insert_sec_filings
 from backend.ingestion.sec_provider import MockSECProvider
@@ -241,3 +242,11 @@ def test_signal_explanation_history_returns_latest_note(tmp_path, monkeypatch) -
     payload = signal_explanation_history("XXXX")
 
     assert payload["status"] == "insufficient_data"
+
+
+def test_simulation_status_endpoint_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'simulation_status.db'}")
+
+    payload = simulation_status()
+
+    assert {"synthetic_events", "signal_count", "research_dataset_rows", "ml_dataset_rows"} <= set(payload)

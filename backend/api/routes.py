@@ -21,6 +21,11 @@ from backend.models.signal_engine import (
 )
 from backend.research.event_study import run_event_study
 from backend.research.validation import granger_for_ticker, validation_summary
+from backend.simulation.synthetic_history import (
+    generate_synthetic_history,
+    synthetic_status,
+    write_synthetic_history,
+)
 
 router = APIRouter()
 
@@ -187,3 +192,20 @@ def signal_explanation_history(ticker: str) -> dict:
         "reports": [explain_signal_card(card).model_dump(mode="json") for card in history],
         "note": "Current storage exposes generated latest history only.",
     }
+
+
+@router.get("/simulation/status")
+def simulation_status() -> dict:
+    return synthetic_status()
+
+
+@router.get("/simulation/generate-demo-data")
+def simulation_generate_demo_data(reset_demo_data: bool = False, days: int = 60, signals: int = 100) -> dict:
+    if not reset_demo_data:
+        return {
+            "status": "requires_confirmation",
+            "message": "Pass reset_demo_data=true to generate demo data through the API.",
+        }
+    history = generate_synthetic_history(days=days, signals=signals)
+    write_synthetic_history(history, reset_demo_data=True)
+    return {"status": "ok", **synthetic_status()}

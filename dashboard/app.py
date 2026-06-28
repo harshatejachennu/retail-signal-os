@@ -7,6 +7,7 @@ from backend.ml.training import run_training
 from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import get_live_signal_cards
 from backend.research.validation import validation_summary
+from backend.simulation.synthetic_history import synthetic_status
 
 
 PAGES = [
@@ -18,6 +19,7 @@ PAGES = [
     "Backtest Lab",
     "Research Validation",
     "ML Evaluation",
+    "Demo Data / Replay",
     "Data Health",
 ]
 
@@ -191,6 +193,20 @@ elif page == "ML Evaluation":
     st.write("Limitations")
     for warning in summary["warnings"] or ["ML outputs are educational estimates, not financial advice."]:
         st.warning(warning)
+elif page == "Demo Data / Replay":
+    st.subheader("Demo Data / Replay")
+    status = synthetic_status()
+    st.warning("Synthetic history is demonstration data only and is not real market evidence.")
+    cols = st.columns(5)
+    cols[0].metric("Synthetic Events", status["synthetic_events"])
+    cols[1].metric("Signal Cards", status["signal_count"])
+    cols[2].metric("Backtests", status["backtest_count"])
+    cols[3].metric("Research Rows", status["research_dataset_rows"])
+    cols[4].metric("ML Rows", status["ml_dataset_rows"])
+    st.write("Target Distribution")
+    st.json(status["target_distribution"])
+    st.code("python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data")
+    st.code("python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31")
 else:
     st.subheader(page)
     st.info("Placeholder for the next foundation milestone.")

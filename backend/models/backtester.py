@@ -106,6 +106,8 @@ def backtest_signal_card(
         notes.append("Insufficient future bars after signal timestamp.")
     if not spy_bars or not qqq_bars:
         notes.append("Benchmark bars missing for SPY or QQQ.")
+    if "synthetic" in card.explanation.lower():
+        notes.append("synthetic_demo data.")
     notes.append("Educational backtest only; no trading advice.")
 
     return BacktestResult(

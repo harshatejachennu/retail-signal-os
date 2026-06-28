@@ -20,6 +20,11 @@ class SignalCard(BaseModel):
     catalyst_explanation: str | None = None
     catalyst_limitations: str | None = None
     data_quality_score: float = Field(ge=0.0, le=100.0)
+    sentiment_score: float | None = None
+    bullish_ratio: float | None = None
+    bearish_ratio: float | None = None
+    mention_count: int | None = None
+    source_event_count: int | None = None
     sentiment_label: Literal["positive", "negative", "neutral"] | None = None
     market_stance: Literal["bullish", "bearish", "neutral", "unclear"] | None = None
     intent: (

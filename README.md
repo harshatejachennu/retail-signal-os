@@ -107,6 +107,28 @@ The explanation layer does not call external LLM APIs and does not use a generat
 
 These reports explain evidence already inside the system. They do not make trading decisions, do not prove causation, and are not financial advice. Use `GET /signals/{ticker}/explanation`, `GET /signals/{ticker}/explanation/history`, and `GET /agents/health`, or open the Streamlit `Signal Explanation` page.
 
+## Synthetic History And Replay
+
+Synthetic history exists so the research validation and ML layers can be demonstrated without real Reddit credentials, real SEC network access, or paid market data:
+
+```bash
+python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
+python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31
+```
+
+The generator creates deterministic synthetic Reddit-like events, SEC-like filings, and market bars across multiple tickers and scenarios. It labels sources as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for testing Granger-style validation, lead-lag checks, ML target classes, and replay behavior, but they are not real market evidence.
+
+Replay mode reads synthetic events in ingestion-time order and rebuilds available Signal Cards over time without looking ahead. Use the Streamlit `Demo Data / Replay` page or `GET /simulation/status` to inspect synthetic row counts.
+
+Full demo pipeline:
+
+```bash
+python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
+python3 -m backend.research.validation
+python3 -m backend.ml.training
+python3 -m backend.agents.explanation_engine --ticker NVDA
+```
+
 ## Run API
 
 ```bash

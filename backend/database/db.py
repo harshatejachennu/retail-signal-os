@@ -262,6 +262,25 @@ def fetch_backtest_results(connection: sqlite3.Connection, ticker: str | None = 
     ).fetchall()
 
 
+def clear_demo_data(connection: sqlite3.Connection) -> None:
+    connection.execute("DELETE FROM events WHERE source = 'synthetic_reddit'")
+    connection.execute("DELETE FROM market_bars WHERE source = 'synthetic_market'")
+    connection.execute("DELETE FROM sec_filings WHERE source = 'synthetic_sec'")
+    connection.execute("DELETE FROM backtest_results WHERE notes LIKE '%synthetic_demo%'")
+    connection.execute("DELETE FROM sentiment_results WHERE event_id LIKE 'synthetic:%'")
+    connection.commit()
+
+
+def count_rows_by_source(connection: sqlite3.Connection, table: str, source: str) -> int:
+    if table not in {"events", "market_bars", "sec_filings"}:
+        raise ValueError("Unsupported source-count table")
+    return int(
+        connection.execute(f"SELECT COUNT(*) AS count FROM {table} WHERE source = ?", (source,)).fetchone()[
+            "count"
+        ]
+    )
+
+
 def insert_sec_filings(connection: sqlite3.Connection, filings: list[SECFiling]) -> None:
     connection.executemany(
         """
