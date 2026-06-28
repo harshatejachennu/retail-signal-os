@@ -12,6 +12,7 @@ dependencies = [
   "praw>=7.8",
   "pydantic>=2.7",
   "python-dotenv>=1.0",
+  "statsmodels>=0.14",
   "streamlit>=1.35",
   "uvicorn[standard]>=0.30",
 ]

@@ -67,6 +67,20 @@ Set `SEC_DATA_MODE=mock` for offline development and tests. Real SEC mode is opt
 
 Catalyst scoring matches stored SEC filings near a Signal Card timestamp. A nearby 8-K, Form 4, 10-Q, or 10-K can raise `catalyst_score`, but the match is contextual only and does not prove the filing caused Reddit sentiment or any price move.
 
+## Research Validation
+
+Run the research validation layer after generating signals, market bars, and backtests:
+
+```bash
+python3 -m backend.research.validation
+```
+
+Validation asks whether past signal features helped forecast later returns in the stored dataset. Granger causality here means Granger-style predictive usefulness: past values of a feature may improve forecasting of a target series in this dataset. It does not mean true economic causation.
+
+Lead-lag correlation compares feature values with future return series at configurable lags. Event studies summarize returns before and after Signal Card timestamps and abnormal returns versus SPY/QQQ when benchmarks exist. Negative controls compare features against unrelated returns to detect spurious relationships or leakage. Ablation tests compare simple feature-group metrics with and without social, risk, catalyst, and quality groups.
+
+Avoid p-hacking and overclaiming: repeated tests on small or mock datasets can look meaningful by chance. Treat all validation outputs as educational research diagnostics, not financial advice or proof of a tradable edge.
+
 ## Run API
 
 ```bash

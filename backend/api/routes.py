@@ -14,6 +14,8 @@ from backend.models.signal_engine import (
     get_signal_card_for_ticker,
     get_signal_card_history,
 )
+from backend.research.event_study import run_event_study
+from backend.research.validation import granger_for_ticker, validation_summary
 
 router = APIRouter()
 
@@ -102,3 +104,18 @@ def signal_catalysts(ticker: str) -> dict:
         }
     finally:
         connection.close()
+
+
+@router.get("/research/validation-summary")
+def research_validation_summary() -> dict:
+    return validation_summary()
+
+
+@router.get("/research/granger/{ticker}")
+def research_granger_ticker(ticker: str) -> dict:
+    return granger_for_ticker(ticker)
+
+
+@router.get("/research/event-study")
+def research_event_study() -> dict:
+    return run_event_study().model_dump(mode="json")

@@ -3,6 +3,7 @@ import streamlit as st
 from backend.database.db import connect, fetch_sec_filings, initialize
 from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import get_live_signal_cards
+from backend.research.validation import validation_summary
 
 
 PAGES = [
@@ -71,6 +72,29 @@ elif page == "Backtest Lab":
         cols[5].metric("Win 3d", summary["win_rate_3d"])
         st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
 elif page == "Research Validation":
+    st.subheader("Research Validation")
+    summary = validation_summary()
+    st.metric("Dataset Rows", summary["dataset_rows"])
+    if summary["dataset_rows"] < 8:
+        st.info(
+            "Research validation requires more historical signal/backtest rows. Run more "
+            "ingestion/market/backtesting cycles or use synthetic test data."
+        )
+    cols = st.columns(3)
+    cols[0].write("Granger")
+    cols[0].json(summary["granger_summary"])
+    cols[1].write("Lead-Lag")
+    cols[1].json(summary["lead_lag_summary"])
+    cols[2].write("Event Study")
+    cols[2].json(summary["event_study_summary"])
+    st.write("Negative Controls")
+    st.json(summary["negative_control_summary"])
+    st.write("Ablation")
+    st.dataframe(summary["ablation_summary"], use_container_width=True)
+    st.write("Limitations")
+    for warning in summary["warnings"]:
+        st.warning(warning)
+
     st.subheader("SEC Catalysts")
     connection = connect()
     initialize(connection)

@@ -8,7 +8,10 @@ from fastapi import HTTPException
 from backend.api.routes import (
     live_signals,
     research_backtest_summary,
+    research_event_study,
+    research_granger_ticker,
     research_sec_filings,
+    research_validation_summary,
     signal_backtest,
     signal_catalysts,
     signal_for_ticker,
@@ -123,3 +126,37 @@ def test_signal_catalysts_handles_known_and_unknown_tickers(tmp_path, monkeypatc
     with pytest.raises(HTTPException) as exc_info:
         signal_catalysts("XXXX")
     assert exc_info.value.status_code == 404
+
+
+def test_research_validation_summary_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'validation.db'}")
+
+    summary = research_validation_summary()
+
+    assert {
+        "dataset_rows",
+        "granger_summary",
+        "lead_lag_summary",
+        "event_study_summary",
+        "negative_control_summary",
+        "ablation_summary",
+        "warnings",
+    } <= set(summary)
+
+
+def test_research_granger_ticker_handles_insufficient_data(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'granger.db'}")
+
+    payload = research_granger_ticker("AMD")
+
+    assert payload["ticker"] == "AMD"
+    assert payload["results"]
+    assert payload["results"][0]["interpretation"] == "insufficient_data"
+
+
+def test_research_event_study_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'event_study.db'}")
+
+    payload = research_event_study()
+
+    assert {"signals_evaluated", "average_post_event_return", "notes"} <= set(payload)
