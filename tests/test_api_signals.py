@@ -5,8 +5,16 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 
-from backend.api.routes import live_signals, research_backtest_summary, signal_backtest, signal_for_ticker
-from backend.database.db import connect, initialize, insert_events
+from backend.api.routes import (
+    live_signals,
+    research_backtest_summary,
+    research_sec_filings,
+    signal_backtest,
+    signal_catalysts,
+    signal_for_ticker,
+)
+from backend.database.db import connect, initialize, insert_events, insert_sec_filings
+from backend.ingestion.sec_provider import MockSECProvider
 from backend.processing.events import Event
 
 
@@ -69,4 +77,49 @@ def test_ticker_backtest_endpoint_handles_missing_data(tmp_path, monkeypatch) ->
     with pytest.raises(HTTPException) as exc_info:
         signal_backtest("TSLA")
 
+    assert exc_info.value.status_code == 404
+
+
+def test_research_sec_filings_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    database_url = f"sqlite:///{tmp_path / 'sec_api.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    connection = connect(database_url)
+    initialize(connection)
+    insert_sec_filings(
+        connection,
+        MockSECProvider().fetch_filings(
+            ["AAPL"],
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2026, 1, 31, tzinfo=timezone.utc),
+        ),
+    )
+    connection.close()
+
+    payload = research_sec_filings()
+
+    assert payload
+    assert {"ticker", "form_type", "filed_at", "title", "summary"} <= set(payload[0])
+
+
+def test_signal_catalysts_handles_known_and_unknown_tickers(tmp_path, monkeypatch) -> None:
+    database_url = f"sqlite:///{tmp_path / 'catalyst_api.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    connection = connect(database_url)
+    initialize(connection)
+    insert_sec_filings(
+        connection,
+        MockSECProvider().fetch_filings(
+            ["TSLA"],
+            datetime(2026, 1, 1, tzinfo=timezone.utc),
+            datetime(2026, 1, 31, tzinfo=timezone.utc),
+        ),
+    )
+    connection.close()
+
+    known = signal_catalysts("TSLA")
+
+    assert known["ticker"] == "TSLA"
+    assert "catalyst_score" in known
+    with pytest.raises(HTTPException) as exc_info:
+        signal_catalysts("XXXX")
     assert exc_info.value.status_code == 404

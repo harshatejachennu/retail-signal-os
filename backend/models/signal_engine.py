@@ -3,7 +3,14 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from backend.database.db import connect, fetch_events, fetch_market_bars_after_timestamp, initialize
+from backend.database.db import (
+    connect,
+    fetch_events,
+    fetch_market_bars_after_timestamp,
+    fetch_sec_filings_near_time,
+    initialize,
+)
+from backend.features.catalyst import attach_catalyst_to_card, score_catalysts_for_signal
 from backend.models.backtester import attach_backtest_to_card, backtest_signal_card
 from backend.models.signal_card import SignalCard
 from backend.processing.manipulation import score_manipulation_risk
@@ -71,6 +78,11 @@ def generate_signal_cards_from_database(database_url: str | None = None) -> list
         cards = generate_signal_cards_from_events(events)
         enriched: list[SignalCard] = []
         for card in cards:
+            catalyst = score_catalysts_for_signal(
+                card,
+                fetch_sec_filings_near_time(connection, card.ticker, card.timestamp),
+            )
+            card = attach_catalyst_to_card(card, catalyst)
             result = backtest_signal_card(
                 card,
                 fetch_market_bars_after_timestamp(connection, card.ticker, card.timestamp),

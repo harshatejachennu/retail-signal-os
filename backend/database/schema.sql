@@ -71,3 +71,19 @@ CREATE TABLE IF NOT EXISTS backtest_results (
     max_drawdown REAL,
     notes TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS sec_filings (
+    filing_id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    cik TEXT NOT NULL,
+    form_type TEXT NOT NULL,
+    filed_at TEXT NOT NULL,
+    accepted_at TEXT,
+    ingestion_time TEXT NOT NULL,
+    accession_number TEXT NOT NULL,
+    filing_url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    source TEXT NOT NULL,
+    raw_payload TEXT NOT NULL DEFAULT '{}'
+);

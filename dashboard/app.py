@@ -1,5 +1,6 @@
 import streamlit as st
 
+from backend.database.db import connect, fetch_sec_filings, initialize
 from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import get_live_signal_cards
 
@@ -36,6 +37,11 @@ if page == "Live Signals":
             right.metric("Manipulation Risk", f"{card.manipulation_risk:.0f}")
             right.write(f"Risk level: {card.manipulation_risk_level or 'unknown'}")
             right.metric("Data Quality", f"{card.data_quality_score:.0f}")
+            right.metric("Catalyst", f"{card.catalyst_score:.0f}")
+            if card.catalyst_explanation:
+                st.write(card.catalyst_explanation)
+            if card.catalyst_events:
+                st.dataframe(card.catalyst_events, use_container_width=True)
             if card.backtest_available:
                 st.write(
                     f"Backtest: 1d={card.return_1d}, 3d={card.return_3d}, "
@@ -64,6 +70,37 @@ elif page == "Backtest Lab":
         cols[4].metric("QQQ Adj 3d", summary["average_qqq_adjusted_return_3d"])
         cols[5].metric("Win 3d", summary["win_rate_3d"])
         st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
+elif page == "Research Validation":
+    st.subheader("SEC Catalysts")
+    connection = connect()
+    initialize(connection)
+    try:
+        filings = fetch_sec_filings(connection, limit=50)
+    finally:
+        connection.close()
+    cards = {card.ticker: card for card in get_live_signal_cards()}
+    if not filings:
+        st.info(
+            "No SEC filings are stored yet. Run "
+            "`python3 -m backend.ingestion.sec_provider --tickers AAPL,TSLA,NVDA,AMD,MSFT,COIN,PLTR --days 30`."
+        )
+    else:
+        rows = []
+        for filing in filings:
+            card = cards.get(filing.ticker)
+            rows.append(
+                {
+                    "ticker": filing.ticker,
+                    "form_type": filing.form_type,
+                    "filed_at": filing.filed_at.isoformat(),
+                    "title": filing.title,
+                    "summary": filing.summary,
+                    "matched_signal": card.ticker if card else None,
+                    "catalyst_score": card.catalyst_score if card else None,
+                    "catalyst_explanation": card.catalyst_explanation if card else None,
+                }
+            )
+        st.dataframe(rows, use_container_width=True)
 else:
     st.subheader(page)
     st.info("Placeholder for the next foundation milestone.")

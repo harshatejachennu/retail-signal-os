@@ -228,11 +228,11 @@ def signal_card_from_aggregate(aggregate: TickerAggregate) -> SignalCard:
             f"and {aggregate.mention_count} ticker mention(s). Direction is {direction}; top intent type(s): "
             f"{top_intents}. Average manipulation risk is {aggregate.average_manipulation_risk:.1f}/100 "
             f"({manipulation_level}). {data_quality_note}{zscore_note}"
-            "Market data, price/volume confirmation, and SEC/news catalysts are not included yet."
+            "Market data, price/volume confirmation, and SEC catalyst matches are limited to stored data."
         ),
         what_could_go_wrong=(
             "Signal is based on limited mock/social data only. No price or volume confirmation is available yet. "
-            "No SEC/news catalyst layer has been added yet. High manipulation risk may indicate hype or spam."
+            "An SEC catalyst match, when present, does not prove causation. High manipulation risk may indicate hype or spam."
         ),
     )
 

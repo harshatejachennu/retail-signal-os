@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.models.market_data import MarketBar
+from backend.models.sec_filing import SECFiling
 from backend.processing.events import Event
 from backend.processing.sentiment import SentimentResult
 
@@ -259,3 +260,106 @@ def fetch_backtest_results(connection: sqlite3.Connection, ticker: str | None = 
         "SELECT * FROM backtest_results WHERE ticker = ? ORDER BY evaluated_at DESC",
         (ticker.upper(),),
     ).fetchall()
+
+
+def insert_sec_filings(connection: sqlite3.Connection, filings: list[SECFiling]) -> None:
+    connection.executemany(
+        """
+        INSERT OR REPLACE INTO sec_filings (
+            filing_id,
+            ticker,
+            cik,
+            form_type,
+            filed_at,
+            accepted_at,
+            ingestion_time,
+            accession_number,
+            filing_url,
+            title,
+            summary,
+            source,
+            raw_payload
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                filing.filing_id,
+                filing.ticker,
+                filing.cik,
+                filing.form_type,
+                filing.filed_at.isoformat(),
+                filing.accepted_at.isoformat() if filing.accepted_at else None,
+                filing.ingestion_time.isoformat(),
+                filing.accession_number,
+                filing.filing_url,
+                filing.title,
+                filing.summary,
+                filing.source,
+                json.dumps(filing.raw_payload, sort_keys=True, default=str),
+            )
+            for filing in filings
+        ],
+    )
+    connection.commit()
+
+
+def _row_to_sec_filing(row: sqlite3.Row) -> SECFiling:
+    return SECFiling(
+        filing_id=row["filing_id"],
+        ticker=row["ticker"],
+        cik=row["cik"],
+        form_type=row["form_type"],
+        filed_at=row["filed_at"],
+        accepted_at=row["accepted_at"],
+        ingestion_time=row["ingestion_time"],
+        accession_number=row["accession_number"],
+        filing_url=row["filing_url"],
+        title=row["title"],
+        summary=row["summary"],
+        source=row["source"],
+        raw_payload=json.loads(row["raw_payload"]),
+    )
+
+
+def fetch_sec_filings(connection: sqlite3.Connection, limit: int | None = None) -> list[SECFiling]:
+    query = "SELECT * FROM sec_filings ORDER BY filed_at DESC"
+    params: tuple[int, ...] = ()
+    if limit is not None:
+        query += " LIMIT ?"
+        params = (limit,)
+    return [_row_to_sec_filing(row) for row in connection.execute(query, params).fetchall()]
+
+
+def fetch_sec_filings_for_ticker(connection: sqlite3.Connection, ticker: str) -> list[SECFiling]:
+    return [
+        _row_to_sec_filing(row)
+        for row in connection.execute(
+            "SELECT * FROM sec_filings WHERE ticker = ? ORDER BY filed_at DESC",
+            (ticker.upper(),),
+        ).fetchall()
+    ]
+
+
+def fetch_sec_filings_near_time(
+    connection: sqlite3.Connection,
+    ticker: str,
+    timestamp,
+    days_before: int = 7,
+    days_after: int = 1,
+) -> list[SECFiling]:
+    from datetime import timedelta
+
+    start = timestamp - timedelta(days=days_before)
+    end = timestamp + timedelta(days=days_after)
+    return [
+        _row_to_sec_filing(row)
+        for row in connection.execute(
+            """
+            SELECT * FROM sec_filings
+            WHERE ticker = ? AND filed_at >= ? AND filed_at <= ?
+            ORDER BY filed_at DESC
+            """,
+            (ticker.upper(), start.isoformat(), end.isoformat()),
+        ).fetchall()
+    ]

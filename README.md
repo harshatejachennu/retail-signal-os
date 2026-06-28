@@ -10,7 +10,7 @@ RetailSignal OS is not a real-money trading bot and does not provide financial a
 
 - `backend/api`: FastAPI app with health and sample signal endpoints.
 - `backend/database`: SQLite schema and connection helper, structured for a later PostgreSQL migration.
-- `backend/ingestion`: Mock-first Reddit and market data providers plus placeholder SEC provider.
+- `backend/ingestion`: Mock-first Reddit, market data, and SEC providers.
 - `backend/processing`: Unified events, ticker resolution, sentiment, and manipulation risk scoring.
 - `backend/features`: Rolling z-score, exponential time decay, and feature store placeholder.
 - `backend/models`: Signal Card model and placeholder signal engine.
@@ -54,6 +54,18 @@ python3 -m backend.models.backtester
 Set `MARKET_DATA_MODE=mock` for offline development. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the provider interface; if `yfinance` is unavailable or network access fails, use mock mode. Market data sources can have usage restrictions, licensing terms, and redistribution limits.
 
 Backtests are educational research outputs only. They evaluate generated Signal Cards against stored future OHLCV bars and SPY/QQQ benchmarks, but they are not trading advice and do not prove causality.
+
+## SEC Filings And Catalysts
+
+SEC filings default to deterministic mock mode:
+
+```bash
+python3 -m backend.ingestion.sec_provider --tickers AAPL,TSLA,NVDA,AMD,MSFT,COIN,PLTR --days 30
+```
+
+Set `SEC_DATA_MODE=mock` for offline development and tests. Real SEC mode is optional with `SEC_DATA_MODE=real` and requires a descriptive `SEC_USER_AGENT` with contact information, for example `RetailSignalOS/0.1 contact:YOUR_EMAIL@example.com`. SEC EDGAR automated access has fair-access limits; request only what is needed, identify the client clearly, and avoid aggressive polling.
+
+Catalyst scoring matches stored SEC filings near a Signal Card timestamp. A nearby 8-K, Form 4, 10-Q, or 10-K can raise `catalyst_score`, but the match is contextual only and does not prove the filing caused Reddit sentiment or any price move.
 
 ## Run API
 

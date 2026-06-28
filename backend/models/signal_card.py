@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +16,9 @@ class SignalCard(BaseModel):
     late_hype_risk: float = Field(ge=0.0, le=100.0)
     contradiction_score: float = Field(ge=0.0, le=100.0)
     catalyst_score: float = Field(ge=0.0, le=100.0)
+    catalyst_events: list[dict[str, Any]] = Field(default_factory=list)
+    catalyst_explanation: str | None = None
+    catalyst_limitations: str | None = None
     data_quality_score: float = Field(ge=0.0, le=100.0)
     sentiment_label: Literal["positive", "negative", "neutral"] | None = None
     market_stance: Literal["bullish", "bearish", "neutral", "unclear"] | None = None
