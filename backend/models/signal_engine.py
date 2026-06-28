@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import argparse
 from datetime import datetime, timezone
 
+from backend.database.db import connect, fetch_events, initialize
 from backend.models.signal_card import SignalCard
 from backend.processing.manipulation import score_manipulation_risk
+from backend.processing.pipeline import generate_signal_cards_from_events
 from backend.processing.sentiment import score_sentiment
 
 
@@ -11,9 +14,8 @@ def create_signal_card_from_text(ticker: str, text: str, timestamp: datetime | N
     sentiment = score_sentiment(text)
     manipulation_risk = score_manipulation_risk(text)
     data_quality_score = 0.72 if text.strip() else 0.2
-    signal_strength = min(abs(sentiment.sentiment_score) * 0.5 + 0.25, 1.0)
-    normalized_manipulation_risk = manipulation_risk.normalized_score()
-    trust_score = max(0.0, min(data_quality_score - normalized_manipulation_risk * 0.35, 1.0))
+    signal_strength = min(abs(sentiment.sentiment_score) * 50 + 25, 100.0)
+    trust_score = max(0.0, min(data_quality_score * 100 - manipulation_risk.risk_score * 0.35, 100.0))
     direction = "uncertain" if sentiment.market_stance == "unclear" else sentiment.market_stance
 
     return SignalCard(
@@ -22,11 +24,11 @@ def create_signal_card_from_text(ticker: str, text: str, timestamp: datetime | N
         direction=direction,
         signal_strength=signal_strength,
         trust_score=trust_score,
-        manipulation_risk=normalized_manipulation_risk,
-        late_hype_risk=0.35,
-        contradiction_score=0.2,
-        catalyst_score=0.3,
-        data_quality_score=data_quality_score,
+        manipulation_risk=manipulation_risk.risk_score,
+        late_hype_risk=35.0,
+        contradiction_score=20.0,
+        catalyst_score=0.0,
+        data_quality_score=data_quality_score * 100,
         sentiment_label=sentiment.general_sentiment,
         market_stance=sentiment.market_stance,
         intent=sentiment.intent,
@@ -58,3 +60,59 @@ def create_sample_signal_cards() -> list[SignalCard]:
             sample_time,
         ),
     ]
+
+
+def generate_signal_cards_from_database(database_url: str | None = None) -> list[SignalCard]:
+    connection = connect(database_url)
+    initialize(connection)
+    try:
+        events = fetch_events(connection)
+    finally:
+        connection.close()
+    return generate_signal_cards_from_events(events)
+
+
+def get_live_signal_cards(database_url: str | None = None) -> list[SignalCard]:
+    generated = generate_signal_cards_from_database(database_url)
+    return generated or create_sample_signal_cards()
+
+
+def get_signal_card_for_ticker(ticker: str, database_url: str | None = None) -> SignalCard | None:
+    ticker = ticker.upper()
+    for card in get_live_signal_cards(database_url):
+        if card.ticker == ticker:
+            return card
+    return None
+
+
+def get_signal_card_history(ticker: str, database_url: str | None = None) -> list[SignalCard]:
+    card = get_signal_card_for_ticker(ticker, database_url)
+    return [] if card is None else [card]
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate Signal Cards from stored events.")
+    parser.parse_args()
+
+    connection = connect()
+    initialize(connection)
+    try:
+        events = fetch_events(connection)
+    finally:
+        connection.close()
+
+    cards = generate_signal_cards_from_events(events)
+    print(f"total events read: {len(events)}")
+    print(f"tickers processed: {len(cards)}")
+    print(f"Signal Cards generated: {len(cards)}")
+    top_cards = cards[:5]
+    if top_cards:
+        print("top Signal Cards by signal_strength:")
+        for card in top_cards:
+            print(f"- {card.ticker}: {card.signal_strength:.1f} ({card.direction})")
+    else:
+        print("top Signal Cards by signal_strength: none")
+
+
+if __name__ == "__main__":
+    main()

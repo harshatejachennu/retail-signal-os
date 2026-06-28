@@ -33,7 +33,7 @@ def test_signal_card_rejects_invalid_score() -> None:
             timestamp=datetime.now(timezone.utc),
             direction="bullish",
             signal_strength=0.6,
-            trust_score=1.2,
+            trust_score=120.0,
             manipulation_risk=0.1,
             late_hype_risk=0.2,
             contradiction_score=0.3,
