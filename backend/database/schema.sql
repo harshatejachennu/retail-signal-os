@@ -25,3 +25,18 @@ CREATE TABLE IF NOT EXISTS signal_cards (
     explanation TEXT NOT NULL,
     what_could_go_wrong TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS sentiment_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id TEXT,
+    ticker TEXT,
+    general_sentiment TEXT NOT NULL,
+    market_stance TEXT NOT NULL,
+    intent TEXT NOT NULL,
+    sentiment_score REAL NOT NULL,
+    confidence REAL NOT NULL,
+    evidence_terms TEXT NOT NULL DEFAULT '[]',
+    explanation TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(event_id) REFERENCES events(event_id)
+);

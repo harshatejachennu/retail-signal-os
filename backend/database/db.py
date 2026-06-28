@@ -6,6 +6,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.processing.events import Event
+from backend.processing.sentiment import SentimentResult
 
 
 DEFAULT_DATABASE_PATH = Path("retail_signal.db")
@@ -89,3 +90,39 @@ def fetch_events(connection: sqlite3.Connection, limit: int | None = None) -> li
         )
         for row in rows
     ]
+
+
+def insert_sentiment_result(
+    connection: sqlite3.Connection,
+    sentiment: SentimentResult,
+    event_id: str | None = None,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO sentiment_results (
+            event_id,
+            ticker,
+            general_sentiment,
+            market_stance,
+            intent,
+            sentiment_score,
+            confidence,
+            evidence_terms,
+            explanation,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        """,
+        (
+            event_id,
+            sentiment.ticker,
+            sentiment.general_sentiment,
+            sentiment.market_stance,
+            sentiment.intent,
+            sentiment.sentiment_score,
+            sentiment.confidence,
+            json.dumps(sentiment.evidence_terms, sort_keys=True),
+            sentiment.explanation,
+        ),
+    )
+    connection.commit()

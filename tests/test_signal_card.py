@@ -54,6 +54,6 @@ def test_signal_engine_adds_explanation_and_risk_text() -> None:
 def test_manipulation_risk_basic_behavior() -> None:
     low = score_manipulation_risk("Measured discussion about Microsoft revenue growth.")
     high = score_manipulation_risk("$TSLA $NVDA MOON ROCKET YOLO 🚀🚀🚀")
-    assert high > low
-    assert 0.0 <= low <= 1.0
-    assert 0.0 <= high <= 1.0
+    assert high.risk_score > low.risk_score
+    assert 0.0 <= low.risk_score <= 100.0
+    assert 0.0 <= high.risk_score <= 100.0

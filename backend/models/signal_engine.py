@@ -12,22 +12,30 @@ def create_signal_card_from_text(ticker: str, text: str, timestamp: datetime | N
     manipulation_risk = score_manipulation_risk(text)
     data_quality_score = 0.72 if text.strip() else 0.2
     signal_strength = min(abs(sentiment.sentiment_score) * 0.5 + 0.25, 1.0)
-    trust_score = max(0.0, min(data_quality_score - manipulation_risk * 0.35, 1.0))
+    normalized_manipulation_risk = manipulation_risk.normalized_score()
+    trust_score = max(0.0, min(data_quality_score - normalized_manipulation_risk * 0.35, 1.0))
+    direction = "uncertain" if sentiment.market_stance == "unclear" else sentiment.market_stance
 
     return SignalCard(
         ticker=ticker.upper(),
         timestamp=timestamp or datetime.now(timezone.utc),
-        direction=sentiment.market_stance,
+        direction=direction,
         signal_strength=signal_strength,
         trust_score=trust_score,
-        manipulation_risk=manipulation_risk,
+        manipulation_risk=normalized_manipulation_risk,
         late_hype_risk=0.35,
         contradiction_score=0.2,
         catalyst_score=0.3,
         data_quality_score=data_quality_score,
+        sentiment_label=sentiment.general_sentiment,
+        market_stance=sentiment.market_stance,
+        intent=sentiment.intent,
+        manipulation_risk_level=manipulation_risk.risk_level,
+        manipulation_risk_reasons=manipulation_risk.reasons,
         explanation=(
             f"{ticker.upper()} placeholder Signal Card generated from deterministic text features: "
-            f"stance={sentiment.market_stance}, sentiment={sentiment.sentiment_score:.2f}."
+            f"stance={sentiment.market_stance}, sentiment={sentiment.sentiment_score:.2f}, "
+            f"intent={sentiment.intent}, manipulation_risk={manipulation_risk.risk_level}."
         ),
         what_could_go_wrong=(
             "This is a research signal from limited text evidence. Price action may already reflect the "

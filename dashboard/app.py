@@ -27,11 +27,17 @@ if page == "Live Signals":
         with st.container(border=True):
             left, middle, right = st.columns([1, 2, 2])
             left.metric(card.ticker, card.direction)
+            left.write(f"Sentiment: {card.sentiment_label or 'unknown'}")
+            left.write(f"Intent: {card.intent or 'unknown'}")
             middle.metric("Signal Strength", f"{card.signal_strength:.2f}")
             middle.metric("Trust Score", f"{card.trust_score:.2f}")
-            right.metric("Manipulation Risk", f"{card.manipulation_risk:.2f}")
+            middle.write(f"Market stance: {card.market_stance or card.direction}")
+            right.metric("Manipulation Risk", f"{card.manipulation_risk * 100:.0f}")
+            right.write(f"Risk level: {card.manipulation_risk_level or 'unknown'}")
             right.metric("Data Quality", f"{card.data_quality_score:.2f}")
             st.write(card.explanation)
+            if card.manipulation_risk_reasons:
+                st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
             st.warning(card.what_could_go_wrong)
 else:
     st.subheader(page)
