@@ -10,7 +10,7 @@ RetailSignal OS is not a real-money trading bot and does not provide financial a
 
 - `backend/api`: FastAPI app with health and sample signal endpoints.
 - `backend/database`: SQLite schema and connection helper, structured for a later PostgreSQL migration.
-- `backend/ingestion`: Placeholder providers for Reddit, market data, and SEC filings.
+- `backend/ingestion`: Mock-first Reddit provider plus placeholder market data and SEC providers.
 - `backend/processing`: Unified events, ticker resolution, sentiment, and manipulation risk scoring.
 - `backend/features`: Rolling z-score, exponential time decay, and feature store placeholder.
 - `backend/models`: Signal Card model and placeholder signal engine.
@@ -32,6 +32,16 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
+## Reddit Ingestion
+
+Reddit ingestion defaults to compliant mock mode, so local development and tests do not require Reddit API credentials:
+
+```bash
+python3 -m backend.ingestion.reddit_provider --limit 25
+```
+
+Real Reddit API mode is optional and uses PRAW only when `REDDIT_INGESTION_MODE=praw` and credentials are available in `.env`. Reddit API access may require developer registration or approval under Reddit's Responsible Builder Policy, Developer Terms, and Data API Terms. Use a truthful, descriptive `REDDIT_USER_AGENT`, respect Reddit rate limits and deletion/removal obligations, and do not redistribute raw Reddit content publicly. This project is for non-commercial educational research.
+
 ## Run API
 
 ```bash
@@ -48,7 +58,7 @@ streamlit run dashboard/app.py
 
 ## Roadmap
 
-- Add real source ingestion only after the foundation is tested.
+- Expand source ingestion only after the foundation is tested.
 - Expand ticker resolution with exchange-aware symbol metadata.
 - Replace placeholder sentiment with VADER, FinBERT, or a finance-specific classifier.
 - Add market stance extraction separately from sentiment.

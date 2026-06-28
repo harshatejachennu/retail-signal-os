@@ -4,12 +4,27 @@ import re
 from dataclasses import dataclass
 
 
-ALLOWLIST = {"AAPL", "TSLA", "NVDA", "AMD", "MSFT", "GOOGL", "META", "PLTR"}
+ALLOWLIST = {
+    "AAPL",
+    "TSLA",
+    "NVDA",
+    "AMD",
+    "MSFT",
+    "GOOGL",
+    "META",
+    "PLTR",
+    "AMZN",
+    "NFLX",
+    "INTC",
+    "COIN",
+    "MSTR",
+}
 FALSE_POSITIVE_BLACKLIST = {"AI", "DD", "CEO", "CFO", "GDP", "USA", "IT", "FOR", "ON", "ARE", "YOLO"}
 COMPANY_NAME_MAP = {
     "apple": "AAPL",
     "tesla": "TSLA",
     "nvidia": "NVDA",
+    "amd": "AMD",
     "advanced micro devices": "AMD",
     "microsoft": "MSFT",
     "google": "GOOGL",
@@ -17,6 +32,16 @@ COMPANY_NAME_MAP = {
     "meta": "META",
     "facebook": "META",
     "palantir": "PLTR",
+    "amazon": "AMZN",
+    "netflix": "NFLX",
+    "intel": "INTC",
+    "coinbase": "COIN",
+    "microstrategy": "MSTR",
+}
+NICKNAME_PRODUCT_MAP = {
+    "iphone": ("AAPL", 0.68),
+    "jensen": ("NVDA", 0.72),
+    "elon": ("TSLA", 0.58),
 }
 
 
@@ -73,5 +98,9 @@ def resolve_tickers(text: str) -> list[TickerMatch]:
     for company_name, ticker in COMPANY_NAME_MAP.items():
         for match in re.finditer(rf"\b{re.escape(company_name)}\b", lowered):
             _add_match(matches, ticker, "company_name", 0.78, text, match.start(), match.end())
+
+    for nickname, (ticker, confidence) in NICKNAME_PRODUCT_MAP.items():
+        for match in re.finditer(rf"\b{re.escape(nickname)}\b", lowered):
+            _add_match(matches, ticker, "nickname_product", confidence, text, match.start(), match.end())
 
     return sorted(matches.values(), key=lambda item: item.ticker)
