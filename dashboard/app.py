@@ -1,6 +1,8 @@
 import streamlit as st
 
 from backend.database.db import connect, fetch_sec_filings, initialize
+from backend.ml.scoring import score_signal_card
+from backend.ml.training import run_training
 from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import get_live_signal_cards
 from backend.research.validation import validation_summary
@@ -13,6 +15,7 @@ PAGES = [
     "Manipulation Monitor",
     "Backtest Lab",
     "Research Validation",
+    "ML Evaluation",
     "Data Health",
 ]
 
@@ -48,6 +51,12 @@ if page == "Live Signals":
                     f"Backtest: 1d={card.return_1d}, 3d={card.return_3d}, "
                     f"SPY adj 3d={card.spy_adjusted_return_3d}, QQQ adj 3d={card.qqq_adjusted_return_3d}"
                 )
+            ml_score = score_signal_card(card)
+            st.write(f"ML score available: {ml_score.ml_score_available}")
+            if ml_score.target_probabilities:
+                st.write(f"ML probabilities: {ml_score.target_probabilities}")
+            if ml_score.warnings:
+                st.write("ML warnings: " + ", ".join(ml_score.warnings))
             st.write(card.explanation)
             if card.manipulation_risk_reasons:
                 st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
@@ -125,6 +134,27 @@ elif page == "Research Validation":
                 }
             )
         st.dataframe(rows, use_container_width=True)
+elif page == "ML Evaluation":
+    st.subheader("ML Evaluation")
+    summary = run_training(save_artifacts=False)
+    st.metric("Dataset Rows", summary["dataset_rows"])
+    st.write("Target Distribution")
+    st.json(summary["target_availability"])
+    st.write("Model Statuses")
+    st.json(summary["model_statuses"])
+    st.write("Baseline vs Logistic vs Random Forest Metrics")
+    st.json(summary["latest_metrics"])
+    st.write("Feature Importance")
+    importance = summary["feature_importance"]
+    if importance.get("importances"):
+        st.dataframe(importance["importances"], use_container_width=True)
+    else:
+        st.info("Feature importance is unavailable until there is enough labeled data with two target classes.")
+    st.write("Walk-Forward Validation")
+    st.json(summary["walk_forward"])
+    st.write("Limitations")
+    for warning in summary["warnings"] or ["ML outputs are educational estimates, not financial advice."]:
+        st.warning(warning)
 else:
     st.subheader(page)
     st.info("Placeholder for the next foundation milestone.")

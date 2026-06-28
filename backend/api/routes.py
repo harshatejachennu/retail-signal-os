@@ -8,6 +8,10 @@ from backend.database.db import (
     initialize,
 )
 from backend.features.catalyst import score_catalysts_for_signal
+from backend.ml.models import feature_importance
+from backend.ml.scoring import score_signal_card
+from backend.ml.dataset import build_ml_dataset
+from backend.ml.training import run_training
 from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import (
     get_live_signal_cards,
@@ -119,3 +123,30 @@ def research_granger_ticker(ticker: str) -> dict:
 @router.get("/research/event-study")
 def research_event_study() -> dict:
     return run_event_study().model_dump(mode="json")
+
+
+@router.get("/ml/summary")
+def ml_summary() -> dict:
+    return run_training(save_artifacts=False)
+
+
+@router.get("/ml/feature-importance")
+def ml_feature_importance() -> dict:
+    dataset = build_ml_dataset()
+    target = dataset.target_columns[0] if dataset.target_columns else "positive_return_3d"
+    return feature_importance(dataset, target).model_dump(mode="json")
+
+
+@router.get("/signals/{ticker}/ml-score")
+def signal_ml_score(ticker: str) -> dict:
+    card = get_signal_card_for_ticker(ticker)
+    if card is None:
+        return {
+            "status": "insufficient_data",
+            "ml_score_available": False,
+            "target_probabilities": {},
+            "confidence_level": "none",
+            "warnings": [f"No Signal Card available for {ticker.upper()}."],
+            "interpretation": "ML score unavailable.",
+        }
+    return score_signal_card(card).model_dump(mode="json")

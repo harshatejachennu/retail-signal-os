@@ -43,5 +43,9 @@ class SignalCard(BaseModel):
     spy_adjusted_return_3d: float | None = None
     qqq_adjusted_return_3d: float | None = None
     backtest_notes: str | None = None
+    ml_score_available: bool = False
+    ml_target_probabilities: dict[str, float] = Field(default_factory=dict)
+    ml_confidence_level: str | None = None
+    ml_warnings: list[str] = Field(default_factory=list)
     explanation: str = Field(min_length=1)
     what_could_go_wrong: str = Field(min_length=1)

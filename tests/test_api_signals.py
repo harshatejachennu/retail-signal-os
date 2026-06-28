@@ -7,6 +7,8 @@ from fastapi import HTTPException
 
 from backend.api.routes import (
     live_signals,
+    ml_feature_importance,
+    ml_summary,
     research_backtest_summary,
     research_event_study,
     research_granger_ticker,
@@ -15,6 +17,7 @@ from backend.api.routes import (
     signal_backtest,
     signal_catalysts,
     signal_for_ticker,
+    signal_ml_score,
 )
 from backend.database.db import connect, initialize, insert_events, insert_sec_filings
 from backend.ingestion.sec_provider import MockSECProvider
@@ -160,3 +163,28 @@ def test_research_event_study_returns_valid_structure(tmp_path, monkeypatch) -> 
     payload = research_event_study()
 
     assert {"signals_evaluated", "average_post_event_return", "notes"} <= set(payload)
+
+
+def test_ml_summary_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'ml_summary.db'}")
+
+    payload = ml_summary()
+
+    assert {"dataset_rows", "target_availability", "model_statuses", "latest_metrics", "warnings"} <= set(payload)
+
+
+def test_ml_feature_importance_handles_missing_data(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'ml_importance.db'}")
+
+    payload = ml_feature_importance()
+
+    assert payload["status"] in {"ok", "insufficient_data"}
+
+
+def test_signal_ml_score_handles_insufficient_data(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'ml_score.db'}")
+
+    payload = signal_ml_score("AMD")
+
+    assert payload["status"] == "insufficient_data"
+    assert payload["ml_score_available"] is False

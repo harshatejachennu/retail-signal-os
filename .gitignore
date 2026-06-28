@@ -13,3 +13,4 @@ build/
 *.sqlite
 *.sqlite3
 .streamlit/secrets.toml
+artifacts/models/

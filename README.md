@@ -81,6 +81,20 @@ Lead-lag correlation compares feature values with future return series at config
 
 Avoid p-hacking and overclaiming: repeated tests on small or mock datasets can look meaningful by chance. Treat all validation outputs as educational research diagnostics, not financial advice or proof of a tradable edge.
 
+## ML Signal Scoring
+
+Run lightweight ML training and evaluation after generating signals and backtests:
+
+```bash
+python3 -m backend.ml.training
+```
+
+The ML layer estimates whether historical Signal Card features were associated with future outperformance targets such as SPY-adjusted 3-day return, QQQ-adjusted 3-day return, or positive 3-day return. It compares a majority-class baseline, logistic regression, and random forest style classifier, and reports feature importance when enough labeled rows exist.
+
+The ML layer does not issue buy/sell instructions, guarantee prediction, or prove causality. It uses only features available at the Signal Card timestamp and excludes future return columns from model features to reduce target leakage.
+
+Time-based splits are used because older observations should train the model and newer observations should test it. Walk-forward validation repeats that idea over rolling chronological windows. Small samples, mock data, class imbalance, overfitting, and repeated experimentation can all produce misleading results, so treat outputs as educational diagnostics only.
+
 ## Run API
 
 ```bash
