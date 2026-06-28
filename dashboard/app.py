@@ -1,5 +1,6 @@
 import streamlit as st
 
+from backend.models.backtester import backtest_signal_cards_from_database, backtest_summary
 from backend.models.signal_engine import get_live_signal_cards
 
 
@@ -35,10 +36,34 @@ if page == "Live Signals":
             right.metric("Manipulation Risk", f"{card.manipulation_risk:.0f}")
             right.write(f"Risk level: {card.manipulation_risk_level or 'unknown'}")
             right.metric("Data Quality", f"{card.data_quality_score:.0f}")
+            if card.backtest_available:
+                st.write(
+                    f"Backtest: 1d={card.return_1d}, 3d={card.return_3d}, "
+                    f"SPY adj 3d={card.spy_adjusted_return_3d}, QQQ adj 3d={card.qqq_adjusted_return_3d}"
+                )
             st.write(card.explanation)
             if card.manipulation_risk_reasons:
                 st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
             st.warning(card.what_could_go_wrong)
+elif page == "Backtest Lab":
+    st.subheader("Backtest Lab")
+    results = backtest_signal_cards_from_database()
+    if not results:
+        st.info(
+            "No generated Signal Cards or market bars are available yet. Run "
+            "`python3 -m backend.ingestion.reddit_provider --limit 25`, then "
+            "`python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,SPY,QQQ --days 10`."
+        )
+    else:
+        summary = backtest_summary(results)
+        cols = st.columns(6)
+        cols[0].metric("Signals", summary["signals_evaluated"])
+        cols[1].metric("Avg 1d", summary["average_return_1d"])
+        cols[2].metric("Avg 3d", summary["average_return_3d"])
+        cols[3].metric("SPY Adj 3d", summary["average_spy_adjusted_return_3d"])
+        cols[4].metric("QQQ Adj 3d", summary["average_qqq_adjusted_return_3d"])
+        cols[5].metric("Win 3d", summary["win_rate_3d"])
+        st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
 else:
     st.subheader(page)
     st.info("Placeholder for the next foundation milestone.")

@@ -5,6 +5,7 @@ import os
 import sqlite3
 from pathlib import Path
 
+from backend.models.market_data import MarketBar
 from backend.processing.events import Event
 from backend.processing.sentiment import SentimentResult
 
@@ -126,3 +127,135 @@ def insert_sentiment_result(
         ),
     )
     connection.commit()
+
+
+def insert_market_bars(connection: sqlite3.Connection, bars: list[MarketBar]) -> None:
+    connection.executemany(
+        """
+        INSERT OR REPLACE INTO market_bars (
+            ticker,
+            timestamp,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            source,
+            ingestion_time
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                bar.ticker,
+                bar.timestamp.isoformat(),
+                bar.open,
+                bar.high,
+                bar.low,
+                bar.close,
+                bar.volume,
+                bar.source,
+                bar.ingestion_time.isoformat(),
+            )
+            for bar in bars
+        ],
+    )
+    connection.commit()
+
+
+def _row_to_market_bar(row: sqlite3.Row) -> MarketBar:
+    return MarketBar(
+        ticker=row["ticker"],
+        timestamp=row["timestamp"],
+        open=row["open"],
+        high=row["high"],
+        low=row["low"],
+        close=row["close"],
+        volume=row["volume"],
+        source=row["source"],
+        ingestion_time=row["ingestion_time"],
+    )
+
+
+def fetch_market_bars(
+    connection: sqlite3.Connection,
+    ticker: str,
+    limit: int | None = None,
+) -> list[MarketBar]:
+    query = "SELECT * FROM market_bars WHERE ticker = ? ORDER BY timestamp ASC"
+    params: tuple = (ticker.upper(),)
+    if limit is not None:
+        query += " LIMIT ?"
+        params = (ticker.upper(), limit)
+    return [_row_to_market_bar(row) for row in connection.execute(query, params).fetchall()]
+
+
+def fetch_market_bars_after_timestamp(
+    connection: sqlite3.Connection,
+    ticker: str,
+    timestamp,
+) -> list[MarketBar]:
+    return [
+        _row_to_market_bar(row)
+        for row in connection.execute(
+            """
+            SELECT * FROM market_bars
+            WHERE ticker = ? AND timestamp > ?
+            ORDER BY timestamp ASC
+            """,
+            (ticker.upper(), timestamp.isoformat()),
+        ).fetchall()
+    ]
+
+
+def insert_backtest_results(connection: sqlite3.Connection, results: list) -> None:
+    connection.executemany(
+        """
+        INSERT INTO backtest_results (
+            signal_id,
+            ticker,
+            signal_timestamp,
+            evaluated_at,
+            return_1h,
+            return_1d,
+            return_3d,
+            return_7d,
+            spy_adjusted_return_1d,
+            qqq_adjusted_return_1d,
+            spy_adjusted_return_3d,
+            qqq_adjusted_return_3d,
+            max_drawdown,
+            notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                result.signal_id,
+                result.ticker,
+                result.signal_timestamp.isoformat(),
+                result.evaluated_at.isoformat(),
+                result.return_1h,
+                result.return_1d,
+                result.return_3d,
+                result.return_7d,
+                result.spy_adjusted_return_1d,
+                result.qqq_adjusted_return_1d,
+                result.spy_adjusted_return_3d,
+                result.qqq_adjusted_return_3d,
+                result.max_drawdown,
+                result.notes,
+            )
+            for result in results
+        ],
+    )
+    connection.commit()
+
+
+def fetch_backtest_results(connection: sqlite3.Connection, ticker: str | None = None) -> list[sqlite3.Row]:
+    if ticker is None:
+        return connection.execute("SELECT * FROM backtest_results ORDER BY evaluated_at DESC").fetchall()
+    return connection.execute(
+        "SELECT * FROM backtest_results WHERE ticker = ? ORDER BY evaluated_at DESC",
+        (ticker.upper(),),
+    ).fetchall()

@@ -34,5 +34,11 @@ class SignalCard(BaseModel):
     ) = None
     manipulation_risk_level: Literal["low", "medium", "high"] | None = None
     manipulation_risk_reasons: list[str] = Field(default_factory=list)
+    backtest_available: bool = False
+    return_1d: float | None = None
+    return_3d: float | None = None
+    spy_adjusted_return_3d: float | None = None
+    qqq_adjusted_return_3d: float | None = None
+    backtest_notes: str | None = None
     explanation: str = Field(min_length=1)
     what_could_go_wrong: str = Field(min_length=1)

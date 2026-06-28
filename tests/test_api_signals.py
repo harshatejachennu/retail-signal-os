@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi import HTTPException
 
-from backend.api.routes import live_signals, signal_for_ticker
+from backend.api.routes import live_signals, research_backtest_summary, signal_backtest, signal_for_ticker
 from backend.database.db import connect, initialize, insert_events
 from backend.processing.events import Event
 
@@ -44,4 +44,29 @@ def test_signal_ticker_handles_known_and_unknown_tickers(tmp_path, monkeypatch) 
     assert known["ticker"] == "TSLA"
     with pytest.raises(HTTPException) as exc_info:
         signal_for_ticker("XXXX")
+    assert exc_info.value.status_code == 404
+
+
+def test_backtest_summary_returns_valid_structure(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'summary.db'}")
+
+    summary = research_backtest_summary()
+
+    assert {
+        "signals_evaluated",
+        "average_return_1d",
+        "average_return_3d",
+        "average_spy_adjusted_return_3d",
+        "average_qqq_adjusted_return_3d",
+        "win_rate_1d",
+        "win_rate_3d",
+    } <= set(summary)
+
+
+def test_ticker_backtest_endpoint_handles_missing_data(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'missing_backtest.db'}")
+
+    with pytest.raises(HTTPException) as exc_info:
+        signal_backtest("TSLA")
+
     assert exc_info.value.status_code == 404

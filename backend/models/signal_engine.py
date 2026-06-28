@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from backend.database.db import connect, fetch_events, initialize
+from backend.database.db import connect, fetch_events, fetch_market_bars_after_timestamp, initialize
+from backend.models.backtester import attach_backtest_to_card, backtest_signal_card
 from backend.models.signal_card import SignalCard
 from backend.processing.manipulation import score_manipulation_risk
 from backend.processing.pipeline import generate_signal_cards_from_events
@@ -67,9 +68,19 @@ def generate_signal_cards_from_database(database_url: str | None = None) -> list
     initialize(connection)
     try:
         events = fetch_events(connection)
+        cards = generate_signal_cards_from_events(events)
+        enriched: list[SignalCard] = []
+        for card in cards:
+            result = backtest_signal_card(
+                card,
+                fetch_market_bars_after_timestamp(connection, card.ticker, card.timestamp),
+                fetch_market_bars_after_timestamp(connection, "SPY", card.timestamp),
+                fetch_market_bars_after_timestamp(connection, "QQQ", card.timestamp),
+            )
+            enriched.append(attach_backtest_to_card(card, result))
+        return enriched
     finally:
         connection.close()
-    return generate_signal_cards_from_events(events)
 
 
 def get_live_signal_cards(database_url: str | None = None) -> list[SignalCard]:

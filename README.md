@@ -10,7 +10,7 @@ RetailSignal OS is not a real-money trading bot and does not provide financial a
 
 - `backend/api`: FastAPI app with health and sample signal endpoints.
 - `backend/database`: SQLite schema and connection helper, structured for a later PostgreSQL migration.
-- `backend/ingestion`: Mock-first Reddit provider plus placeholder market data and SEC providers.
+- `backend/ingestion`: Mock-first Reddit and market data providers plus placeholder SEC provider.
 - `backend/processing`: Unified events, ticker resolution, sentiment, and manipulation risk scoring.
 - `backend/features`: Rolling z-score, exponential time decay, and feature store placeholder.
 - `backend/models`: Signal Card model and placeholder signal engine.
@@ -41,6 +41,19 @@ python3 -m backend.ingestion.reddit_provider --limit 25
 ```
 
 Real Reddit API mode is optional and uses PRAW only when `REDDIT_INGESTION_MODE=praw` and credentials are available in `.env`. Reddit API access may require developer registration or approval under Reddit's Responsible Builder Policy, Developer Terms, and Data API Terms. Use a truthful, descriptive `REDDIT_USER_AGENT`, respect Reddit rate limits and deletion/removal obligations, and do not redistribute raw Reddit content publicly. This project is for non-commercial educational research.
+
+## Market Data And Backtesting
+
+Market data defaults to deterministic mock mode and does not require paid APIs:
+
+```bash
+python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,SPY,QQQ --days 10
+python3 -m backend.models.backtester
+```
+
+Set `MARKET_DATA_MODE=mock` for offline development. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the provider interface; if `yfinance` is unavailable or network access fails, use mock mode. Market data sources can have usage restrictions, licensing terms, and redistribution limits.
+
+Backtests are educational research outputs only. They evaluate generated Signal Cards against stored future OHLCV bars and SPY/QQQ benchmarks, but they are not trading advice and do not prove causality.
 
 ## Run API
 

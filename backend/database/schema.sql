@@ -40,3 +40,34 @@ CREATE TABLE IF NOT EXISTS sentiment_results (
     created_at TEXT NOT NULL,
     FOREIGN KEY(event_id) REFERENCES events(event_id)
 );
+
+CREATE TABLE IF NOT EXISTS market_bars (
+    ticker TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    open REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    close REAL NOT NULL,
+    volume INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    ingestion_time TEXT NOT NULL,
+    PRIMARY KEY (ticker, timestamp, source)
+);
+
+CREATE TABLE IF NOT EXISTS backtest_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signal_id TEXT,
+    ticker TEXT NOT NULL,
+    signal_timestamp TEXT NOT NULL,
+    evaluated_at TEXT NOT NULL,
+    return_1h REAL,
+    return_1d REAL,
+    return_3d REAL,
+    return_7d REAL,
+    spy_adjusted_return_1d REAL,
+    qqq_adjusted_return_1d REAL,
+    spy_adjusted_return_3d REAL,
+    qqq_adjusted_return_3d REAL,
+    max_drawdown REAL,
+    notes TEXT NOT NULL
+);

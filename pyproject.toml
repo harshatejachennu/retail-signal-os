@@ -20,6 +20,9 @@ dependencies = [
 dev = [
   "pytest>=8.2",
 ]
+market = [
+  "yfinance>=0.2",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
