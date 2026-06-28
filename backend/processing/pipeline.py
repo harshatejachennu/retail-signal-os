@@ -250,7 +250,10 @@ def generate_signal_cards_from_events(events: list[Event]) -> list[SignalCard]:
         for aggregate in aggregate_processed_events(process_events([event])):
             card = signal_card_from_aggregate(aggregate)
             updated = card.model_dump()
-            updated["explanation"] = "Synthetic demonstration data. " + card.explanation
+            updated["explanation"] = "Synthetic demonstration data only; not real market evidence. " + card.explanation
+            updated["what_could_go_wrong"] = (
+                "This is synthetic demo data, not real social or market evidence. " + card.what_could_go_wrong
+            )
             cards.append(SignalCard(**updated))
     aggregates = aggregate_processed_events(process_events(non_synthetic_events))
     cards.extend(signal_card_from_aggregate(aggregate) for aggregate in aggregates)

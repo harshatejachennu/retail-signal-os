@@ -22,6 +22,7 @@ from backend.api.routes import (
     signal_explanation_history,
     signal_ml_score,
     simulation_status,
+    simulation_run_demo_pipeline,
 )
 from backend.database.db import connect, initialize, insert_events, insert_sec_filings
 from backend.ingestion.sec_provider import MockSECProvider
@@ -250,3 +251,12 @@ def test_simulation_status_endpoint_returns_valid_structure(tmp_path, monkeypatc
     payload = simulation_status()
 
     assert {"synthetic_events", "signal_count", "research_dataset_rows", "ml_dataset_rows"} <= set(payload)
+
+
+def test_simulation_run_demo_pipeline_requires_confirmation(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'simulation_pipeline.db'}")
+
+    payload = simulation_run_demo_pipeline()
+
+    assert payload["status"] == "requires_confirmation"
+    assert "not real market evidence" in payload["message"]

@@ -26,12 +26,13 @@ PAGES = [
 
 st.set_page_config(page_title="RetailSignal OS", layout="wide")
 st.title("RetailSignal OS")
-st.caption("Research and paper-trading signal cards. Not financial advice.")
+st.caption("Research and paper-trading Signal Cards. Demo data may be synthetic. Not financial advice.")
 
 page = st.sidebar.radio("Page", PAGES)
 
 if page == "Live Signals":
-    st.subheader("Live Signals")
+    st.subheader("Live Signals / Demo Signal Cards")
+    st.info("If no stored events exist, this page shows sample placeholder Signal Cards. Synthetic demo rows are labeled in explanations and are not real evidence.")
     cards = get_live_signal_cards()
     for card in cards:
         with st.container(border=True):
@@ -91,7 +92,7 @@ elif page == "Signal Explanation":
     st.subheader("Signal Explanation")
     cards = get_live_signal_cards()
     if not cards:
-        st.info("No Signal Cards are available yet.")
+        st.info("No Signal Cards are available yet. Run the full synthetic demo pipeline or ingest mock local data first. Synthetic/demo output is not real market evidence.")
     else:
         tickers = [card.ticker for card in cards]
         selected = st.selectbox("Ticker", tickers)
@@ -124,8 +125,7 @@ elif page == "Research Validation":
     st.metric("Dataset Rows", summary["dataset_rows"])
     if summary["dataset_rows"] < 8:
         st.info(
-            "Research validation requires more historical signal/backtest rows. Run more "
-            "ingestion/market/backtesting cycles or use synthetic test data."
+            "Research validation requires more historical signal/backtest rows. Run the full synthetic demo pipeline for an offline demo, or run more mock ingestion/market/backtesting cycles. Synthetic results are demo diagnostics, not real evidence."
         )
     cols = st.columns(3)
     cols[0].write("Granger")
@@ -205,8 +205,9 @@ elif page == "Demo Data / Replay":
     cols[4].metric("ML Rows", status["ml_dataset_rows"])
     st.write("Target Distribution")
     st.json(status["target_distribution"])
+    st.code("python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA")
     st.code("python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data")
     st.code("python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31")
 else:
     st.subheader(page)
-    st.info("Placeholder for the next foundation milestone.")
+    st.info("This page is a planned dashboard area. Run `python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA` to populate demo data. Synthetic results are labeled and are not real evidence.")
