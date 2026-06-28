@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
+from backend.agents.explanation_engine import agents_health as get_agents_health, explain_signal_card, explain_ticker
 from backend.database.db import (
     connect,
     fetch_sec_filings,
@@ -150,3 +151,39 @@ def signal_ml_score(ticker: str) -> dict:
             "interpretation": "ML score unavailable.",
         }
     return score_signal_card(card).model_dump(mode="json")
+
+
+@router.get("/agents/health")
+def agents_health_endpoint() -> dict:
+    return get_agents_health()
+
+
+@router.get("/signals/{ticker}/explanation")
+def signal_explanation(ticker: str) -> dict:
+    report = explain_ticker(ticker)
+    if report is None:
+        return {
+            "status": "insufficient_data",
+            "ticker": ticker.upper(),
+            "warnings": [f"No Signal Card available for {ticker.upper()}."],
+            "not_financial_advice": "This endpoint is for educational research only and is not financial advice.",
+        }
+    return report.model_dump(mode="json")
+
+
+@router.get("/signals/{ticker}/explanation/history")
+def signal_explanation_history(ticker: str) -> dict:
+    history = get_signal_card_history(ticker)
+    if not history:
+        return {
+            "status": "insufficient_data",
+            "ticker": ticker.upper(),
+            "reports": [],
+            "note": "No Signal Card history is available for explanation.",
+        }
+    return {
+        "status": "ok",
+        "ticker": ticker.upper(),
+        "reports": [explain_signal_card(card).model_dump(mode="json") for card in history],
+        "note": "Current storage exposes generated latest history only.",
+    }

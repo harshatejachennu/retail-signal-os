@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes import (
+    agents_health_endpoint,
     live_signals,
     ml_feature_importance,
     ml_summary,
@@ -16,7 +17,9 @@ from backend.api.routes import (
     research_validation_summary,
     signal_backtest,
     signal_catalysts,
+    signal_explanation,
     signal_for_ticker,
+    signal_explanation_history,
     signal_ml_score,
 )
 from backend.database.db import connect, initialize, insert_events, insert_sec_filings
@@ -188,3 +191,53 @@ def test_signal_ml_score_handles_insufficient_data(tmp_path, monkeypatch) -> Non
 
     assert payload["status"] == "insufficient_data"
     assert payload["ml_score_available"] is False
+
+
+def test_agents_health_endpoint_returns_valid_structure() -> None:
+    payload = agents_health_endpoint()
+
+    assert payload["status"] == "ok"
+    assert "BullAgent" in payload["agents"]
+
+
+def test_signal_explanation_handles_unknown_ticker(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'explain_unknown.db'}")
+
+    payload = signal_explanation("XXXX")
+
+    assert payload["status"] == "insufficient_data"
+    assert payload["ticker"] == "XXXX"
+
+
+def test_signal_explanation_handles_known_ticker(tmp_path, monkeypatch) -> None:
+    database_url = f"sqlite:///{tmp_path / 'explain_known.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    connection = connect(database_url)
+    initialize(connection)
+    insert_events(
+        connection,
+        [
+            Event(
+                event_id="explain-nvda-1",
+                source="reddit",
+                event_time=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+                ingestion_time=datetime(2026, 1, 1, 12, 1, tzinfo=timezone.utc),
+                raw_text="NVDA bullish growth and strong demand.",
+                confidence=0.8,
+            )
+        ],
+    )
+    connection.close()
+
+    payload = signal_explanation("NVDA")
+
+    assert payload["ticker"] == "NVDA"
+    assert payload["not_financial_advice"]
+
+
+def test_signal_explanation_history_returns_latest_note(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'explain_history.db'}")
+
+    payload = signal_explanation_history("XXXX")
+
+    assert payload["status"] == "insufficient_data"

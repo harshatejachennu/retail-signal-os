@@ -1,5 +1,6 @@
 import streamlit as st
 
+from backend.agents.explanation_engine import explain_signal_card
 from backend.database.db import connect, fetch_sec_filings, initialize
 from backend.ml.scoring import score_signal_card
 from backend.ml.training import run_training
@@ -11,6 +12,7 @@ from backend.research.validation import validation_summary
 PAGES = [
     "Live Signals",
     "Signal Card Detail",
+    "Signal Explanation",
     "Ticker Deep Dive",
     "Manipulation Monitor",
     "Backtest Lab",
@@ -57,6 +59,9 @@ if page == "Live Signals":
                 st.write(f"ML probabilities: {ml_score.target_probabilities}")
             if ml_score.warnings:
                 st.write("ML warnings: " + ", ".join(ml_score.warnings))
+            report = explain_signal_card(card)
+            st.write("Explanation")
+            st.write(report.final_interpretation)
             st.write(card.explanation)
             if card.manipulation_risk_reasons:
                 st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
@@ -80,6 +85,37 @@ elif page == "Backtest Lab":
         cols[4].metric("QQQ Adj 3d", summary["average_qqq_adjusted_return_3d"])
         cols[5].metric("Win 3d", summary["win_rate_3d"])
         st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
+elif page == "Signal Explanation":
+    st.subheader("Signal Explanation")
+    cards = get_live_signal_cards()
+    if not cards:
+        st.info("No Signal Cards are available yet.")
+    else:
+        tickers = [card.ticker for card in cards]
+        selected = st.selectbox("Ticker", tickers)
+        card = next(card for card in cards if card.ticker == selected)
+        report = explain_signal_card(card)
+        st.write(report.final_interpretation)
+        st.warning(report.not_financial_advice)
+        st.write("Bull Case")
+        st.json(report.bull_case.model_dump(mode="json"))
+        st.write("Bear Case")
+        st.json(report.bear_case.model_dump(mode="json"))
+        st.write("Catalyst Analysis")
+        st.json(report.catalyst_analysis.model_dump(mode="json"))
+        st.write("Manipulation Analysis")
+        st.json(report.manipulation_analysis.model_dump(mode="json"))
+        st.write("Backtest Analysis")
+        st.json(report.backtest_analysis.model_dump(mode="json"))
+        st.write("ML Analysis")
+        st.json(report.ml_analysis.model_dump(mode="json"))
+        st.write("Research Validation")
+        st.json(report.research_validation_analysis.model_dump(mode="json"))
+        st.write("Risk Summary")
+        st.json(report.risk_summary.model_dump(mode="json"))
+        st.write("Limitations")
+        for limitation in report.limitations:
+            st.info(limitation)
 elif page == "Research Validation":
     st.subheader("Research Validation")
     summary = validation_summary()
