@@ -7,8 +7,8 @@ from backend.ml.models import evaluate_baseline, feature_importance, train_logis
 from backend.ml.walk_forward import run_walk_forward_validation
 
 
-def run_training(save_artifacts: bool = True) -> dict:
-    dataset = build_ml_dataset()
+def run_training(save_artifacts: bool = True, database_url: str | None = None) -> dict:
+    dataset = build_ml_dataset(database_url=database_url)
     target = _first_available_target(dataset.target_columns)
     warnings = list(dataset.warnings)
     if target is None:

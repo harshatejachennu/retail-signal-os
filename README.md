@@ -1,48 +1,157 @@
 # RetailSignal OS
 
-RetailSignal OS is an initial production-style foundation for a real-time alternative-data stock signal research platform. It is designed to ingest public signals, extract tickers and narratives, score risk and signal features, generate explainable Signal Cards, and later validate those signals through rigorous research workflows.
+RetailSignal OS is a production-style research platform for turning retail/social market chatter into explainable, testable **Signal Cards**. It ingests Reddit-like events, resolves tickers, separates text sentiment from market stance and intent, scores manipulation risk, checks market and SEC-style context, validates historical outcomes, evaluates lightweight ML models, and explains the result through deterministic rule-based agents.
 
-## What It Is Not
+It is intentionally **not** a stock-prediction shortcut. The project is designed to show how a serious alternative-data system should expose evidence, uncertainty, risk, validation results, and limitations instead of claiming guaranteed alpha.
 
-RetailSignal OS is not a real-money trading bot and does not provide financial advice. It is a research and paper-trading platform. Signals are uncertain research artifacts, not guaranteed predictions.
+## Why This Is More Than A Reddit Sentiment Tracker
 
-## Architecture
+A simple sentiment tracker usually stops at “people sound positive or negative about a ticker.” RetailSignal OS goes further by asking whether the signal is explainable, risky, testable, and time-valid:
 
-- `backend/api`: FastAPI app with health and sample signal endpoints.
-- `backend/database`: SQLite schema and connection helper, structured for a later PostgreSQL migration.
-- `backend/ingestion`: Mock-first Reddit, market data, and SEC providers.
-- `backend/processing`: Unified events, ticker resolution, sentiment, and manipulation risk scoring.
-- `backend/features`: Rolling z-score, exponential time decay, and feature store placeholder.
-- `backend/models`: Signal Card model and placeholder signal engine.
-- `dashboard`: Streamlit dashboard for sample Signal Cards and future pages.
-- `research`: Research and validation workspace.
-- `tests`: Pytest coverage for core behavior.
+- **Ticker resolution:** detects cashtags, conservative uppercase symbols, and common company names while avoiding false positives.
+- **Sentiment vs market stance vs intent:** separates tone from implied market direction and user intent such as serious DD, meme hype, options gambling, or news reaction.
+- **Manipulation-risk scoring:** treats hype, emoji density, repeated claims, and multi-ticker spam as probabilistic risk indicators, not accusations.
+- **Signal Cards:** every signal is packaged with evidence, uncertainty, risk, catalyst context, backtest fields, ML status, and “what could go wrong.”
+- **Point-in-time discipline:** events store both `event_time` and `ingestion_time` to reduce look-ahead bias.
+- **Validation stack:** includes SPY/QQQ-adjusted backtesting, event-study style summaries, Granger-style predictive tests, lead-lag checks, negative controls, ablation tests, and ML evaluation with time-based splits.
+- **Deterministic explanations:** rule-based agents summarize bull, bear, catalyst, manipulation, backtest, ML, research, and risk evidence without external LLM calls or hallucinated facts.
 
-## Setup
+## Quickstart Demo
+
+The demo is fully offline and deterministic. It does **not** require Reddit credentials, live SEC access, paid market data, or external LLM APIs.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
+python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA
 ```
 
-## Run Tests
+Start the API:
+
+```bash
+uvicorn backend.api.main:app --reload
+```
+
+Start the dashboard in another terminal:
+
+```bash
+streamlit run dashboard/app.py
+```
+
+Useful demo endpoints:
+
+- `http://127.0.0.1:8000/health`
+- `http://127.0.0.1:8000/signals/live`
+- `http://127.0.0.1:8000/signals/NVDA/explanation`
+- `http://127.0.0.1:8000/research/backtest-summary`
+- `http://127.0.0.1:8000/research/validation-summary`
+- `http://127.0.0.1:8000/ml/summary`
+- `http://127.0.0.1:8000/simulation/status`
+
+Run tests:
 
 ```bash
 pytest
 ```
 
-## Reddit Ingestion
+## Architecture
 
-Reddit ingestion defaults to compliant mock mode, so local development and tests do not require Reddit API credentials:
+RetailSignal OS follows this pipeline:
+
+```text
+Social/Reddit-like events
+→ ticker resolver
+→ sentiment / market stance / intent
+→ manipulation risk
+→ Signal Cards
+→ market data / backtesting
+→ SEC catalysts
+→ research validation
+→ ML evaluation
+→ deterministic agent explanations
+→ dashboard / API
+```
+
+Implementation map:
+
+- `backend/api`: FastAPI app with health, signal, catalyst, backtest, validation, ML, explanation, and simulation routes.
+- `backend/database`: SQLite schema and connection helpers, isolated so PostgreSQL can replace it later.
+- `backend/ingestion`: Mock-first Reddit, market data, and SEC providers with optional real modes behind interfaces.
+- `backend/processing`: unified events, ticker resolution, sentiment/stance/intent, manipulation risk, and Signal Card generation pipeline.
+- `backend/features`: rolling z-score, time decay, catalyst scoring, and feature-store placeholder.
+- `backend/models`: Signal Card model, signal engine, market bars, SEC filings, and backtester.
+- `backend/research`: validation datasets, Granger-style checks, lead-lag correlation, event studies, negative controls, and ablations.
+- `backend/ml`: time-based splits, baseline/logistic/random-forest style evaluation, walk-forward validation, scoring, and feature importance.
+- `backend/agents`: deterministic rule-based explanation agents; no external LLM calls.
+- `backend/simulation`: synthetic history, replay, and the full demo pipeline.
+- `dashboard`: Streamlit demo dashboard.
+- `docs`: portfolio/demo walkthrough material.
+- `tests`: pytest coverage for core behavior.
+
+## Full Demo Pipeline
+
+Use this single command for a complete local presentation:
+
+```bash
+python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA
+```
+
+The pipeline runs:
+
+1. Reset and generate deterministic synthetic Reddit-like events, SEC-like filings, and market bars.
+2. Replay synthetic events in `ingestion_time` order.
+3. Generate Signal Cards.
+4. Run SPY/QQQ-aware educational backtests.
+5. Run research validation diagnostics.
+6. Train/evaluate lightweight ML scoring models.
+7. Generate a deterministic evidence-grounded explanation for the chosen ticker.
+
+Synthetic rows are clearly labeled with sources such as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for demonstrating pipeline behavior, replay, tests, dashboard states, validation plumbing, and ML target creation. They are **not real market evidence** and should not be used to claim predictive power.
+
+To inspect stages manually:
+
+```bash
+python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
+python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31
+python3 -m backend.models.signal_engine
+python3 -m backend.models.backtester
+python3 -m backend.research.validation
+python3 -m backend.ml.training
+python3 -m backend.agents.explanation_engine --ticker NVDA
+```
+
+## What Makes This Advanced
+
+- **`event_time` vs `ingestion_time`:** stores when an event happened and when the system observed it, so historical features can avoid look-ahead bias.
+- **Signal Cards:** converts every detected signal into a structured artifact with evidence, uncertainty, manipulation risk, catalyst context, backtest status, ML status, explanation, and downside reasoning.
+- **Manipulation risk:** models hype/spam/manipulation indicators as a probabilistic risk score rather than a factual accusation.
+- **Synthetic replay mode:** rebuilds signals through time from synthetic events in ingestion order to demonstrate point-in-time behavior.
+- **SEC catalyst matching:** matches stored SEC-style filings near Signal Card timestamps to provide contextual catalyst evidence without claiming causation.
+- **SPY/QQQ-adjusted backtesting:** compares forward returns with market/tech benchmarks instead of reporting raw returns alone.
+- **Granger-style validation:** tests whether past feature values have predictive usefulness for later target series in the stored dataset.
+- **Lead-lag correlation:** compares feature values with future returns at configurable lags.
+- **Negative controls:** checks unrelated targets to reveal spurious relationships or leakage risk.
+- **Ablation testing:** compares feature groups with and without social, risk, catalyst, and quality signals.
+- **ML with time-based split:** evaluates simple classifiers chronologically so older rows train and newer rows test.
+- **Deterministic agent explanations:** generates bull, bear, catalyst, manipulation, backtest, ML, research, and risk summaries using existing fields only.
+- **No external LLM hallucination risk:** explanation agents are rule-based and do not call generative APIs.
+
+## Optional Real Data Modes
+
+Local development defaults to mock/synthetic data. Optional real modes are isolated behind provider interfaces and are not required for the demo.
+
+### Reddit Ingestion
+
+Mock Reddit ingestion requires no credentials:
 
 ```bash
 python3 -m backend.ingestion.reddit_provider --limit 25
 ```
 
-Real Reddit API mode is optional and uses PRAW only when `REDDIT_INGESTION_MODE=praw` and credentials are available in `.env`. Reddit API access may require developer registration or approval under Reddit's Responsible Builder Policy, Developer Terms, and Data API Terms. Use a truthful, descriptive `REDDIT_USER_AGENT`, respect Reddit rate limits and deletion/removal obligations, and do not redistribute raw Reddit content publicly. This project is for non-commercial educational research.
+Real Reddit API mode is optional and uses PRAW only when `REDDIT_INGESTION_MODE=praw` and credentials are available in `.env`. Reddit API access may require developer registration or approval under Reddit policies. Use a truthful `REDDIT_USER_AGENT`, respect rate limits and deletion/removal obligations, and do not redistribute raw Reddit content publicly.
 
-## Market Data And Backtesting
+### Market Data And Backtesting
 
 Market data defaults to deterministic mock mode and does not require paid APIs:
 
@@ -51,11 +160,9 @@ python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,S
 python3 -m backend.models.backtester
 ```
 
-Set `MARKET_DATA_MODE=mock` for offline development. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the provider interface; if `yfinance` is unavailable or network access fails, use mock mode. Market data sources can have usage restrictions, licensing terms, and redistribution limits.
+Set `MARKET_DATA_MODE=mock` for offline development. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the market data provider; if `yfinance` is unavailable or network access fails, use mock mode. Market data sources can have usage restrictions, licensing terms, and redistribution limits.
 
-Backtests are educational research outputs only. They evaluate generated Signal Cards against stored future OHLCV bars and SPY/QQQ benchmarks, but they are not trading advice and do not prove causality.
-
-## SEC Filings And Catalysts
+### SEC Filings And Catalysts
 
 SEC filings default to deterministic mock mode:
 
@@ -63,23 +170,19 @@ SEC filings default to deterministic mock mode:
 python3 -m backend.ingestion.sec_provider --tickers AAPL,TSLA,NVDA,AMD,MSFT,COIN,PLTR --days 30
 ```
 
-Set `SEC_DATA_MODE=mock` for offline development and tests. Real SEC mode is optional with `SEC_DATA_MODE=real` and requires a descriptive `SEC_USER_AGENT` with contact information, for example `RetailSignalOS/0.1 contact:YOUR_EMAIL@example.com`. SEC EDGAR automated access has fair-access limits; request only what is needed, identify the client clearly, and avoid aggressive polling.
+Set `SEC_DATA_MODE=mock` for offline development and tests. Optional `SEC_DATA_MODE=real` requires a descriptive `SEC_USER_AGENT` with contact information, for example `RetailSignalOS/0.1 contact:YOUR_EMAIL@example.com`. SEC EDGAR automated access has fair-access limits; request only what is needed and avoid aggressive polling.
 
-Catalyst scoring matches stored SEC filings near a Signal Card timestamp. A nearby 8-K, Form 4, 10-Q, or 10-K can raise `catalyst_score`, but the match is contextual only and does not prove the filing caused Reddit sentiment or any price move.
+Catalyst scoring matches stored SEC filings near a Signal Card timestamp. A nearby 8-K, Form 4, 10-Q, or 10-K can raise `catalyst_score`, but the match is contextual only and does not prove the filing caused social sentiment or a price move.
 
 ## Research Validation
 
-Run the research validation layer after generating signals, market bars, and backtests:
+Run validation after generating signals, market bars, and backtests:
 
 ```bash
 python3 -m backend.research.validation
 ```
 
-Validation asks whether past signal features helped forecast later returns in the stored dataset. Granger causality here means Granger-style predictive usefulness: past values of a feature may improve forecasting of a target series in this dataset. It does not mean true economic causation.
-
-Lead-lag correlation compares feature values with future return series at configurable lags. Event studies summarize returns before and after Signal Card timestamps and abnormal returns versus SPY/QQQ when benchmarks exist. Negative controls compare features against unrelated returns to detect spurious relationships or leakage. Ablation tests compare simple feature-group metrics with and without social, risk, catalyst, and quality groups.
-
-Avoid p-hacking and overclaiming: repeated tests on small or mock datasets can look meaningful by chance. Treat all validation outputs as educational research diagnostics, not financial advice or proof of a tradable edge.
+Validation asks whether past signal features helped forecast later returns in the stored dataset. Granger-style testing means predictive usefulness in this dataset; it does **not** prove true economic causation. Lead-lag correlation, event studies, negative controls, and ablations are educational diagnostics that help detect fragile patterns, leakage, or overfitting.
 
 ## ML Signal Scoring
 
@@ -89,11 +192,7 @@ Run lightweight ML training and evaluation after generating signals and backtest
 python3 -m backend.ml.training
 ```
 
-The ML layer estimates whether historical Signal Card features were associated with future outperformance targets such as SPY-adjusted 3-day return, QQQ-adjusted 3-day return, or positive 3-day return. It compares a majority-class baseline, logistic regression, and random forest style classifier, and reports feature importance when enough labeled rows exist.
-
-The ML layer does not issue buy/sell instructions, guarantee prediction, or prove causality. It uses only features available at the Signal Card timestamp and excludes future return columns from model features to reduce target leakage.
-
-Time-based splits are used because older observations should train the model and newer observations should test it. Walk-forward validation repeats that idea over rolling chronological windows. Small samples, mock data, class imbalance, overfitting, and repeated experimentation can all produce misleading results, so treat outputs as educational diagnostics only.
+The ML layer estimates whether historical Signal Card features were associated with future outperformance targets such as SPY-adjusted 3-day return, QQQ-adjusted 3-day return, or positive 3-day return. It compares a majority-class baseline, logistic regression, and random forest style classifier, reports feature importance when enough labeled rows exist, and uses time-based splits to reduce target leakage.
 
 ## Evidence-Grounded Explanations
 
@@ -103,56 +202,29 @@ Signal Card explanations are generated by deterministic, rule-based agents:
 python3 -m backend.agents.explanation_engine --ticker NVDA
 ```
 
-The explanation layer does not call external LLM APIs and does not use a generative model that can invent facts. Each section is grounded in existing Signal Card fields, catalyst matches, backtest fields, ML status, and research validation summaries. The agents produce bull-case, bear-case, catalyst, manipulation, backtest, ML, research, and risk sections, then a balanced final interpretation.
+The explanation layer does not call external LLM APIs and does not use a generative model that can invent facts. Each section is grounded in existing Signal Card fields, catalyst matches, backtest fields, ML status, and research validation summaries. Use `GET /signals/{ticker}/explanation`, `GET /signals/{ticker}/explanation/history`, `GET /agents/health`, or the Streamlit `Signal Explanation` page.
 
-These reports explain evidence already inside the system. They do not make trading decisions, do not prove causation, and are not financial advice. Use `GET /signals/{ticker}/explanation`, `GET /signals/{ticker}/explanation/history`, and `GET /agents/health`, or open the Streamlit `Signal Explanation` page.
+## Limitations And Safety
 
-## Synthetic History And Replay
-
-Synthetic history exists so the research validation and ML layers can be demonstrated without real Reddit credentials, real SEC network access, or paid market data:
-
-```bash
-python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
-python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31
-```
-
-The generator creates deterministic synthetic Reddit-like events, SEC-like filings, and market bars across multiple tickers and scenarios. It labels sources as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for testing Granger-style validation, lead-lag checks, ML target classes, and replay behavior, but they are not real market evidence.
-
-Replay mode reads synthetic events in ingestion-time order and rebuilds available Signal Cards over time without looking ahead. Use the Streamlit `Demo Data / Replay` page or `GET /simulation/status` to inspect synthetic row counts.
-
-Full demo pipeline:
-
-```bash
-python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data
-python3 -m backend.research.validation
-python3 -m backend.ml.training
-python3 -m backend.agents.explanation_engine --ticker NVDA
-```
-
-## Run API
-
-```bash
-uvicorn backend.api.main:app --reload
-```
-
-Then open `http://127.0.0.1:8000/health` or `http://127.0.0.1:8000/signals/live`.
-
-## Run Dashboard
-
-```bash
-streamlit run dashboard/app.py
-```
+- Synthetic/demo data is not real market evidence.
+- RetailSignal OS is not financial advice, investment advice, or a recommendation to buy or sell securities.
+- The project does not automate order execution, broker integration, or real-money trading.
+- Reddit API access may require approval and must follow Reddit terms, rate limits, and data handling obligations.
+- Optional real SEC mode requires proper identification and respectful fair-access behavior.
+- Real model conclusions require real historical data, careful sampling, and out-of-sample validation before any research claims are credible.
+- Granger-style testing can show predictive usefulness in a dataset, but it does not prove true causation.
+- Backtests are educational diagnostics and can be misleading because of small samples, synthetic data, overfitting, transaction costs, slippage, missing data, and repeated experimentation.
 
 ## Roadmap
 
-- Expand source ingestion only after the foundation is tested.
+- Improve source ingestion only after mock/synthetic foundations are tested.
 - Expand ticker resolution with exchange-aware symbol metadata.
-- Replace placeholder sentiment with VADER, FinBERT, or a finance-specific classifier.
-- Add market stance extraction separately from sentiment.
-- Add persistent event and Signal Card storage.
-- Add backtests, event studies, negative controls, ablations, and walk-forward validation.
-- Add outcome tracking to Signal Cards.
+- Replace placeholder sentiment with VADER, FinBERT, or a finance-specific classifier when appropriate.
+- Add richer account/source quality signals without making factual accusations.
+- Add persistent outcome tracking for every Signal Card.
+- Add larger walk-forward and out-of-sample validation workflows.
+- Keep PostgreSQL migration possible by preserving the isolated database layer.
 
 ## Disclaimer
 
-This project is for research and educational use only. It is not financial advice, investment advice, or a recommendation to buy or sell securities.
+This project is for research and educational use only. It is not financial advice, investment advice, or a recommendation to buy or sell securities. It does not claim guaranteed stock prediction or deterministic alpha.
