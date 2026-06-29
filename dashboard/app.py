@@ -26,12 +26,16 @@ PAGES = [
 
 st.set_page_config(page_title="RetailSignal OS", layout="wide")
 st.title("RetailSignal OS")
-st.caption("Research and paper-trading Signal Cards. Demo data may be synthetic. Not financial advice.")
+st.caption("Alternative-data research pipeline: social events → Signal Cards → validation → explanations. Demo data may be synthetic. Not financial advice.")
+st.info("Demo reviewer note: this app demonstrates evidence tracking, point-in-time replay, benchmark-aware validation, ML evaluation, and deterministic explanations. It does not place trades or claim guaranteed predictions.")
 
-page = st.sidebar.radio("Page", PAGES)
+page = st.sidebar.radio("Demo page", PAGES)
+st.sidebar.markdown("### Demo flow")
+st.sidebar.markdown("1. Demo Data / Replay\n2. Live Signals\n3. Signal Explanation\n4. Backtest Lab\n5. Research Validation\n6. ML Evaluation")
 
 if page == "Live Signals":
     st.subheader("Live Signals / Demo Signal Cards")
+    st.caption("Shows each detected ticker as a structured Signal Card with evidence, uncertainty, and risk fields.")
     st.info("If no stored events exist, this page shows sample placeholder Signal Cards. Synthetic demo rows are labeled in explanations and are not real evidence.")
     cards = get_live_signal_cards()
     for card in cards:
@@ -70,13 +74,13 @@ if page == "Live Signals":
                 st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
             st.warning(card.what_could_go_wrong)
 elif page == "Backtest Lab":
-    st.subheader("Backtest Lab")
+    st.subheader("Backtest Lab: benchmark-aware outcome checks")
+    st.caption("Educational forward-return checks against stored market bars, including SPY/QQQ-adjusted fields where available.")
     results = backtest_signal_cards_from_database()
     if not results:
         st.info(
             "No generated Signal Cards or market bars are available yet. Run "
-            "`python3 -m backend.ingestion.reddit_provider --limit 25`, then "
-            "`python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,SPY,QQQ --days 10`."
+            "`python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA` for a full offline demo, or run `python3 -m backend.ingestion.reddit_provider --limit 25`, then `python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,SPY,QQQ --days 10`."
         )
     else:
         summary = backtest_summary(results)
@@ -89,7 +93,8 @@ elif page == "Backtest Lab":
         cols[5].metric("Win 3d", summary["win_rate_3d"])
         st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
 elif page == "Signal Explanation":
-    st.subheader("Signal Explanation")
+    st.subheader("Signal Explanation: deterministic evidence agents")
+    st.caption("Rule-based agents summarize bull, bear, catalyst, manipulation, backtest, ML, research, and risk evidence without external LLM calls.")
     cards = get_live_signal_cards()
     if not cards:
         st.info("No Signal Cards are available yet. Run the full synthetic demo pipeline or ingest mock local data first. Synthetic/demo output is not real market evidence.")
@@ -120,7 +125,8 @@ elif page == "Signal Explanation":
         for limitation in report.limitations:
             st.info(limitation)
 elif page == "Research Validation":
-    st.subheader("Research Validation")
+    st.subheader("Research Validation: leakage and robustness checks")
+    st.caption("Diagnostics include Granger-style predictive tests, lead-lag correlation, event studies, negative controls, and ablations. These do not prove causation.")
     summary = validation_summary()
     st.metric("Dataset Rows", summary["dataset_rows"])
     if summary["dataset_rows"] < 8:
@@ -142,7 +148,7 @@ elif page == "Research Validation":
     for warning in summary["warnings"]:
         st.warning(warning)
 
-    st.subheader("SEC Catalysts")
+    st.write("SEC Catalysts")
     connection = connect()
     initialize(connection)
     try:
@@ -173,7 +179,8 @@ elif page == "Research Validation":
             )
         st.dataframe(rows, use_container_width=True)
 elif page == "ML Evaluation":
-    st.subheader("ML Evaluation")
+    st.subheader("ML Evaluation: chronological model checks")
+    st.caption("Compares simple baselines/models using time-based splits and reports limitations before any claims.")
     summary = run_training(save_artifacts=False)
     st.metric("Dataset Rows", summary["dataset_rows"])
     st.write("Target Distribution")
@@ -194,9 +201,10 @@ elif page == "ML Evaluation":
     for warning in summary["warnings"] or ["ML outputs are educational estimates, not financial advice."]:
         st.warning(warning)
 elif page == "Demo Data / Replay":
-    st.subheader("Demo Data / Replay")
+    st.subheader("Demo Data / Replay: reproducible offline pipeline")
+    st.caption("Use this page first in demos to show synthetic row counts and the exact command that populates the app.")
     status = synthetic_status()
-    st.warning("Synthetic history is demonstration data only and is not real market evidence.")
+    st.warning("Synthetic history is demonstration data only and is not real market evidence, financial advice, or proof of causation.")
     cols = st.columns(5)
     cols[0].metric("Synthetic Events", status["synthetic_events"])
     cols[1].metric("Signal Cards", status["signal_count"])
