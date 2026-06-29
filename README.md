@@ -146,7 +146,7 @@ python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,S
 python3 -m backend.models.backtester
 ```
 
-Market data defaults to deterministic mock mode. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the provider interface; use mock mode if `yfinance` is unavailable or network access fails.
+Market data defaults to deterministic mock mode and does not require paid APIs. Optional `MARKET_DATA_MODE=yfinance` is isolated behind the provider interface; use mock mode if `yfinance` is unavailable or network access fails.
 
 ### SEC Filings
 
@@ -155,6 +155,12 @@ python3 -m backend.ingestion.sec_provider --tickers AAPL,TSLA,NVDA,AMD,MSFT,COIN
 ```
 
 SEC filings default to deterministic mock mode. Optional `SEC_DATA_MODE=real` requires a descriptive `SEC_USER_AGENT` with contact information, for example `RetailSignalOS/0.1 contact:YOUR_EMAIL@example.com`. SEC catalyst matches are contextual only and do not prove that a filing caused social sentiment or a price move.
+
+### Synthetic History And Replay
+
+The generator creates deterministic synthetic Reddit-like events, SEC-like filings, and market bars across multiple tickers and scenarios. It labels sources as `synthetic_reddit`, `synthetic_sec`, and `synthetic_market`. Synthetic outcomes are useful for testing Granger-style validation, lead-lag checks, ML target classes, dashboard empty states, and replay behavior, but they are not real market evidence.
+
+Replay mode reads synthetic events in ingestion-time order and rebuilds available Signal Cards over time without looking ahead. Use the Streamlit `Demo Data / Replay` page or `GET /simulation/status` to inspect synthetic row counts.
 
 ## What Makes This Advanced
 
