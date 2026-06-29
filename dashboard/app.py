@@ -148,7 +148,7 @@ elif page == "Research Validation":
     for warning in summary["warnings"]:
         st.warning(warning)
 
-    st.subheader("SEC Catalysts")
+    st.write("SEC Catalysts")
     connection = connect()
     initialize(connection)
     try:
