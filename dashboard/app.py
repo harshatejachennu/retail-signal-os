@@ -1,6 +1,7 @@
 import streamlit as st
 
 from backend.agents.explanation_engine import explain_signal_card
+from backend.agents.models import AgentReport
 from backend.database.db import connect, fetch_sec_filings, initialize
 from backend.ml.scoring import score_signal_card
 from backend.ml.training import run_training
@@ -11,17 +12,38 @@ from backend.simulation.synthetic_history import synthetic_status
 
 
 PAGES = [
+    "Demo Data / Replay",
     "Live Signals",
-    "Signal Card Detail",
     "Signal Explanation",
-    "Ticker Deep Dive",
-    "Manipulation Monitor",
     "Backtest Lab",
     "Research Validation",
     "ML Evaluation",
-    "Demo Data / Replay",
-    "Data Health",
 ]
+
+
+def _agent_summary_rows(reports: list[AgentReport]) -> list[dict[str, object]]:
+    return [
+        {
+            "Agent": report.agent_name,
+            "Summary": report.summary,
+            "Warnings": "; ".join(report.warnings) if report.warnings else "None",
+        }
+        for report in reports
+    ]
+
+
+def _finding_rows(report: AgentReport) -> list[dict[str, object]]:
+    return [
+        {
+            "Title": finding.title,
+            "Type": finding.finding_type,
+            "Severity": finding.severity,
+            "Evidence": "; ".join(finding.evidence),
+            "Limitation": finding.limitation,
+            "Confidence": finding.confidence,
+        }
+        for finding in report.findings
+    ]
 
 
 st.set_page_config(page_title="RetailSignal OS", layout="wide")
@@ -99,22 +121,28 @@ elif page == "Signal Explanation":
         report = explain_signal_card(card)
         st.write(report.final_interpretation)
         st.warning(report.not_financial_advice)
-        st.write("Bull Case")
-        st.json(report.bull_case.model_dump(mode="json"))
-        st.write("Bear Case")
-        st.json(report.bear_case.model_dump(mode="json"))
-        st.write("Catalyst Analysis")
-        st.json(report.catalyst_analysis.model_dump(mode="json"))
-        st.write("Manipulation Analysis")
-        st.json(report.manipulation_analysis.model_dump(mode="json"))
-        st.write("Backtest Analysis")
-        st.json(report.backtest_analysis.model_dump(mode="json"))
-        st.write("ML Analysis")
-        st.json(report.ml_analysis.model_dump(mode="json"))
-        st.write("Research Validation")
-        st.json(report.research_validation_analysis.model_dump(mode="json"))
-        st.write("Risk Summary")
-        st.json(report.risk_summary.model_dump(mode="json"))
+
+        agent_reports = [
+            report.bull_case,
+            report.bear_case,
+            report.catalyst_analysis,
+            report.manipulation_analysis,
+            report.backtest_analysis,
+            report.ml_analysis,
+            report.research_validation_analysis,
+            report.risk_summary,
+        ]
+        st.write("Agent Summary")
+        st.dataframe(_agent_summary_rows(agent_reports), use_container_width=True, hide_index=True)
+
+        selected_agent = st.selectbox("Agent findings", [agent.agent_name for agent in agent_reports])
+        selected_report = next(agent for agent in agent_reports if agent.agent_name == selected_agent)
+        findings = _finding_rows(selected_report)
+        if findings:
+            st.dataframe(findings, use_container_width=True, hide_index=True)
+        else:
+            st.info("No detailed findings for this agent on the selected Signal Card.")
+
         st.write("Limitations")
         for limitation in report.limitations:
             st.info(limitation)
@@ -207,6 +235,3 @@ elif page == "Demo Data / Replay":
     st.json(status["target_distribution"])
     st.code("python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data")
     st.code("python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31")
-else:
-    st.subheader(page)
-    st.info("Placeholder for the next foundation milestone.")
