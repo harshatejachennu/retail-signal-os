@@ -11,16 +11,12 @@ from backend.simulation.synthetic_history import synthetic_status
 
 
 PAGES = [
+    "Demo Data / Replay",
     "Live Signals",
-    "Signal Card Detail",
     "Signal Explanation",
-    "Ticker Deep Dive",
-    "Manipulation Monitor",
     "Backtest Lab",
     "Research Validation",
     "ML Evaluation",
-    "Demo Data / Replay",
-    "Data Health",
 ]
 
 
