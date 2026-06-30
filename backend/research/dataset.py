@@ -39,7 +39,9 @@ def assemble_research_dataset(
 ) -> list[dict[str, Any]]:
     cards = cards if cards is not None else get_live_signal_cards(database_url)
     backtest_results = (
-        backtest_results if backtest_results is not None else backtest_signal_cards_from_database(database_url)
+        backtest_results
+        if backtest_results is not None
+        else backtest_signal_cards_from_database(database_url, persist_results=False)
     )
     backtests_by_key = {
         (result.ticker, result.signal_timestamp.isoformat()): result for result in backtest_results
