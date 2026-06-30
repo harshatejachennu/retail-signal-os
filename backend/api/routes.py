@@ -21,6 +21,7 @@ from backend.models.signal_engine import (
 )
 from backend.research.event_study import run_event_study
 from backend.research.validation import granger_for_ticker, validation_summary
+from backend.simulation.demo_pipeline import DemoPipelineConfig, run_demo_pipeline
 from backend.simulation.synthetic_history import (
     generate_synthetic_history,
     synthetic_status,
@@ -204,8 +205,18 @@ def simulation_generate_demo_data(reset_demo_data: bool = False, days: int = 60,
     if not reset_demo_data:
         return {
             "status": "requires_confirmation",
-            "message": "Pass reset_demo_data=true to generate demo data through the API.",
+            "message": "Pass reset_demo_data=true to generate synthetic demo data through the API. Demo rows are not real market evidence.",
         }
     history = generate_synthetic_history(days=days, signals=signals)
     write_synthetic_history(history, reset_demo_data=True)
     return {"status": "ok", **synthetic_status()}
+
+
+@router.get("/simulation/run-demo-pipeline")
+def simulation_run_demo_pipeline(reset_demo_data: bool = False, days: int = 60, signals: int = 100, ticker: str = "NVDA") -> dict:
+    if not reset_demo_data:
+        return {
+            "status": "requires_confirmation",
+            "message": "Pass reset_demo_data=true to run the synthetic demo pipeline. Demo rows are not real market evidence.",
+        }
+    return run_demo_pipeline(DemoPipelineConfig(days=days, signals=signals, ticker=ticker, reset_demo_data=True))

@@ -145,7 +145,7 @@ def attach_backtest_to_card(card: SignalCard, result: BacktestResult | None) -> 
     return SignalCard(**update)
 
 
-def backtest_signal_cards_from_database(database_url: str | None = None) -> list[BacktestResult]:
+def backtest_signal_cards_from_database(database_url: str | None = None, persist_results: bool = True) -> list[BacktestResult]:
     connection = connect(database_url)
     initialize(connection)
     try:
@@ -164,7 +164,7 @@ def backtest_signal_cards_from_database(database_url: str | None = None) -> list
                 fetch_market_bars_after_timestamp(connection, "QQQ", card.timestamp),
             )
             results.append(backtest_signal_card(card, ticker_bars, spy_bars, qqq_bars))
-        if results:
+        if results and persist_results:
             insert_backtest_results(connection, results)
         return results
     finally:

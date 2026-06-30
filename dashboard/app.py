@@ -1,6 +1,7 @@
 import streamlit as st
 
 from backend.agents.explanation_engine import explain_signal_card
+from backend.agents.models import AgentReport
 from backend.database.db import connect, fetch_sec_filings, initialize
 from backend.ml.scoring import score_signal_card
 from backend.ml.training import run_training
@@ -11,27 +12,68 @@ from backend.simulation.synthetic_history import synthetic_status
 
 
 PAGES = [
+    "Demo Data / Replay",
     "Live Signals",
-    "Signal Card Detail",
     "Signal Explanation",
-    "Ticker Deep Dive",
-    "Manipulation Monitor",
     "Backtest Lab",
     "Research Validation",
     "ML Evaluation",
-    "Demo Data / Replay",
-    "Data Health",
 ]
+
+
+WHAT_THIS_PROVES = {
+    "Demo Data / Replay": "What this proves: the whole demo can be reproduced offline from deterministic synthetic data, with row counts that should stay stable after reset runs.",
+    "Live Signals": "What this proves: raw social events become structured Signal Cards with stance, trust, data quality, catalyst, ML, and risk fields.",
+    "Signal Explanation": "What this proves: deterministic agents can summarize evidence and limitations without external LLM calls or hallucinated facts.",
+    "Backtest Lab": "What this proves: Signal Cards are evaluated against stored future bars and SPY/QQQ benchmark-adjusted outcomes.",
+    "Research Validation": "What this proves: the project checks predictive usefulness, leakage risk, controls, and ablations instead of overclaiming causation.",
+    "ML Evaluation": "What this proves: ML is evaluated chronologically with target availability checks, simple baselines, and limitations.",
+}
+
+
+def page_header(title: str) -> None:
+    st.subheader(title)
+    st.caption(WHAT_THIS_PROVES[title.split(":", 1)[0]])
+
+
+def agent_summary_rows(reports: list[AgentReport]) -> list[dict[str, object]]:
+    return [
+        {
+            "Agent": report.agent_name,
+            "Summary": report.summary,
+            "Findings": len(report.findings),
+            "Warnings": len(report.warnings),
+        }
+        for report in reports
+    ]
+
+
+def finding_rows(report: AgentReport) -> list[dict[str, object]]:
+    return [
+        {
+            "Title": finding.title,
+            "Type": finding.finding_type,
+            "Severity": finding.severity,
+            "Confidence": finding.confidence,
+            "Evidence": "; ".join(finding.evidence[:2]),
+            "Limitation": finding.limitation,
+        }
+        for finding in report.findings
+    ]
 
 
 st.set_page_config(page_title="RetailSignal OS", layout="wide")
 st.title("RetailSignal OS")
-st.caption("Research and paper-trading signal cards. Not financial advice.")
+st.caption("Alternative-data research pipeline: social events → Signal Cards → validation → explanations. Demo data may be synthetic. Not financial advice.")
+st.info("Demo note: this dashboard shows research plumbing and limitations; it does not place trades or claim guaranteed predictions.")
 
-page = st.sidebar.radio("Page", PAGES)
+page = st.sidebar.radio("Demo page", PAGES)
+st.sidebar.markdown("### Suggested flow")
+st.sidebar.markdown(" → ".join(PAGES))
 
 if page == "Live Signals":
-    st.subheader("Live Signals")
+    page_header("Live Signals")
+    st.info("If no stored events exist, sample placeholder Signal Cards appear. Synthetic rows are labeled in explanations and are not real evidence.")
     cards = get_live_signal_cards()
     for card in cards:
         with st.container(border=True):
@@ -69,13 +111,12 @@ if page == "Live Signals":
                 st.write("Risk reasons: " + ", ".join(card.manipulation_risk_reasons))
             st.warning(card.what_could_go_wrong)
 elif page == "Backtest Lab":
-    st.subheader("Backtest Lab")
+    page_header("Backtest Lab")
     results = backtest_signal_cards_from_database()
     if not results:
         st.info(
-            "No generated Signal Cards or market bars are available yet. Run "
-            "`python3 -m backend.ingestion.reddit_provider --limit 25`, then "
-            "`python3 -m backend.ingestion.market_data_provider --tickers AAPL,TSLA,NVDA,AMD,SPY,QQQ --days 10`."
+            "No Signal Cards or market bars are available yet. Run "
+            "`python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA` for the offline demo."
         )
     else:
         summary = backtest_summary(results)
@@ -88,10 +129,10 @@ elif page == "Backtest Lab":
         cols[5].metric("Win 3d", summary["win_rate_3d"])
         st.dataframe([result.model_dump(mode="json") for result in results], use_container_width=True)
 elif page == "Signal Explanation":
-    st.subheader("Signal Explanation")
+    page_header("Signal Explanation")
     cards = get_live_signal_cards()
     if not cards:
-        st.info("No Signal Cards are available yet.")
+        st.info("No Signal Cards are available yet. Run the synthetic demo pipeline or ingest mock local data first.")
     else:
         tickers = [card.ticker for card in cards]
         selected = st.selectbox("Ticker", tickers)
@@ -99,34 +140,36 @@ elif page == "Signal Explanation":
         report = explain_signal_card(card)
         st.write(report.final_interpretation)
         st.warning(report.not_financial_advice)
-        st.write("Bull Case")
-        st.json(report.bull_case.model_dump(mode="json"))
-        st.write("Bear Case")
-        st.json(report.bear_case.model_dump(mode="json"))
-        st.write("Catalyst Analysis")
-        st.json(report.catalyst_analysis.model_dump(mode="json"))
-        st.write("Manipulation Analysis")
-        st.json(report.manipulation_analysis.model_dump(mode="json"))
-        st.write("Backtest Analysis")
-        st.json(report.backtest_analysis.model_dump(mode="json"))
-        st.write("ML Analysis")
-        st.json(report.ml_analysis.model_dump(mode="json"))
-        st.write("Research Validation")
-        st.json(report.research_validation_analysis.model_dump(mode="json"))
-        st.write("Risk Summary")
-        st.json(report.risk_summary.model_dump(mode="json"))
+        reports = [
+            report.bull_case,
+            report.bear_case,
+            report.catalyst_analysis,
+            report.manipulation_analysis,
+            report.backtest_analysis,
+            report.ml_analysis,
+            report.research_validation_analysis,
+            report.risk_summary,
+        ]
+        st.write("Agent summary")
+        st.dataframe(agent_summary_rows(reports), use_container_width=True, hide_index=True)
+        selected_agent_name = st.selectbox("Inspect agent findings", [item.agent_name for item in reports])
+        selected_report = next(item for item in reports if item.agent_name == selected_agent_name)
+        rows = finding_rows(selected_report)
+        if rows:
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+        else:
+            st.info("This agent has no detailed findings for the selected Signal Card.")
+        if selected_report.warnings:
+            st.warning("; ".join(selected_report.warnings))
         st.write("Limitations")
-        for limitation in report.limitations:
+        for limitation in report.limitations[:4]:
             st.info(limitation)
 elif page == "Research Validation":
-    st.subheader("Research Validation")
+    page_header("Research Validation")
     summary = validation_summary()
     st.metric("Dataset Rows", summary["dataset_rows"])
     if summary["dataset_rows"] < 8:
-        st.info(
-            "Research validation requires more historical signal/backtest rows. Run more "
-            "ingestion/market/backtesting cycles or use synthetic test data."
-        )
+        st.info("Research validation needs more historical rows. Run the full synthetic demo pipeline for an offline demo.")
     cols = st.columns(3)
     cols[0].write("Granger")
     cols[0].json(summary["granger_summary"])
@@ -142,7 +185,7 @@ elif page == "Research Validation":
     for warning in summary["warnings"]:
         st.warning(warning)
 
-    st.subheader("SEC Catalysts")
+    st.write("SEC Catalysts")
     connection = connect()
     initialize(connection)
     try:
@@ -151,10 +194,7 @@ elif page == "Research Validation":
         connection.close()
     cards = {card.ticker: card for card in get_live_signal_cards()}
     if not filings:
-        st.info(
-            "No SEC filings are stored yet. Run "
-            "`python3 -m backend.ingestion.sec_provider --tickers AAPL,TSLA,NVDA,AMD,MSFT,COIN,PLTR --days 30`."
-        )
+        st.info("No SEC filings are stored yet. Run the synthetic demo pipeline or mock SEC provider.")
     else:
         rows = []
         for filing in filings:
@@ -165,15 +205,13 @@ elif page == "Research Validation":
                     "form_type": filing.form_type,
                     "filed_at": filing.filed_at.isoformat(),
                     "title": filing.title,
-                    "summary": filing.summary,
                     "matched_signal": card.ticker if card else None,
                     "catalyst_score": card.catalyst_score if card else None,
-                    "catalyst_explanation": card.catalyst_explanation if card else None,
                 }
             )
-        st.dataframe(rows, use_container_width=True)
+        st.dataframe(rows, use_container_width=True, hide_index=True)
 elif page == "ML Evaluation":
-    st.subheader("ML Evaluation")
+    page_header("ML Evaluation")
     summary = run_training(save_artifacts=False)
     st.metric("Dataset Rows", summary["dataset_rows"])
     st.write("Target Distribution")
@@ -185,7 +223,7 @@ elif page == "ML Evaluation":
     st.write("Feature Importance")
     importance = summary["feature_importance"]
     if importance.get("importances"):
-        st.dataframe(importance["importances"], use_container_width=True)
+        st.dataframe(importance["importances"], use_container_width=True, hide_index=True)
     else:
         st.info("Feature importance is unavailable until there is enough labeled data with two target classes.")
     st.write("Walk-Forward Validation")
@@ -194,9 +232,9 @@ elif page == "ML Evaluation":
     for warning in summary["warnings"] or ["ML outputs are educational estimates, not financial advice."]:
         st.warning(warning)
 elif page == "Demo Data / Replay":
-    st.subheader("Demo Data / Replay")
+    page_header("Demo Data / Replay")
     status = synthetic_status()
-    st.warning("Synthetic history is demonstration data only and is not real market evidence.")
+    st.warning("Synthetic demo data is reproducible plumbing, not real market evidence or financial advice.")
     cols = st.columns(5)
     cols[0].metric("Synthetic Events", status["synthetic_events"])
     cols[1].metric("Signal Cards", status["signal_count"])
@@ -205,8 +243,5 @@ elif page == "Demo Data / Replay":
     cols[4].metric("ML Rows", status["ml_dataset_rows"])
     st.write("Target Distribution")
     st.json(status["target_distribution"])
-    st.code("python3 -m backend.simulation.synthetic_history --days 60 --signals 100 --reset-demo-data")
+    st.code("python3 -m backend.simulation.demo_pipeline --days 60 --signals 100 --ticker NVDA")
     st.code("python3 -m backend.simulation.replay --start 2026-01-01 --end 2026-03-31")
-else:
-    st.subheader(page)
-    st.info("Placeholder for the next foundation milestone.")
