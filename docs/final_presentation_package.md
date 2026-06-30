@@ -17,26 +17,33 @@ Longer project summary:
 Use these captions under dashboard screenshots in the README or portfolio page.
 
 ### Demo Data / Replay
+<img width="1440" height="812" alt="Screen Shot 2026-06-30 at 3 25 17 AM" src="https://github.com/user-attachments/assets/01d27b56-42cd-486f-baaf-12a344b9dbfe" />
 
 Shows the reproducible offline demo pipeline. The app generates deterministic synthetic Reddit-like events, SEC-style filings, market bars, Signal Cards, backtests, research rows, and ML rows without requiring real Reddit credentials, paid APIs, live SEC access, or external LLM calls. Synthetic data is clearly labeled and is not real market evidence.
 
+
 ### Live Signals
+<img width="1440" height="811" alt="Screen Shot 2026-06-30 at 3 25 31 AM" src="https://github.com/user-attachments/assets/e4d1aa7a-4de9-40ba-aab3-2916dd45861d" />
 
 Shows the core Signal Card artifact. Each card summarizes a detected ticker with market direction, signal strength, trust score, manipulation risk, data quality, catalyst context, ML score availability, an evidence-based explanation, and a “what could go wrong” section.
 
 ### Signal Explanation
+<img width="1440" height="813" alt="Screen Shot 2026-06-30 at 3 25 44 AM" src="https://github.com/user-attachments/assets/17cc796f-f51a-4954-84f5-d0285b6b6849" />
 
 Shows deterministic agent explanations. Rule-based agents summarize bull, bear, catalyst, manipulation, backtest, ML, research, and risk evidence using stored system fields instead of external generative LLM calls, reducing unsupported hallucination risk.
 
 ### Backtest Lab
+<img width="1440" height="813" alt="Screen Shot 2026-06-30 at 3 26 01 AM" src="https://github.com/user-attachments/assets/78a8fb79-db05-41aa-bf13-dfcb5cdad4cb" />
 
 Shows educational forward-return checks against stored market bars and SPY/QQQ-adjusted benchmarks. This page demonstrates that the project evaluates signal outcomes instead of stopping at social sentiment.
 
 ### Research Validation
+<img width="1440" height="810" alt="Screen Shot 2026-06-30 at 3 26 10 AM" src="https://github.com/user-attachments/assets/213d5c07-291c-4969-8610-b4a62c899924" />
 
 Shows statistical diagnostics such as Granger-style predictive-usefulness checks, lead-lag correlation, event-study summaries, negative controls, and ablations. These results are framed as diagnostics and do not claim true economic causation.
 
 ### ML Evaluation
+<img width="1440" height="812" alt="Screen Shot 2026-06-30 at 3 26 20 AM" src="https://github.com/user-attachments/assets/6cdfe7fe-9c39-4cbc-a932-fb9da5f25e27" />
 
 Shows chronological model evaluation with target distributions, baseline/model status, feature importance when available, and walk-forward validation. This demonstrates time-aware ML evaluation and avoids leakage-prone random splits.
 
